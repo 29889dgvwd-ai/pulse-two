@@ -58,6 +58,35 @@ const defaultTasks = [
   {id:'t3', text:'Придумать план на выходные', doneBy: []},
   {id:'t4', text:'Созвониться на 5 минут', doneBy: []}
 ];
+const duoPrompts = [
+  'Если бы у вас был свободный день без дел, как бы вы его провели?',
+  'Какую совместную мини-традицию хочется придумать?',
+  'Какой фильм можно пересмотреть хоть десять раз?',
+  'Что бы вы положили в коробку воспоминаний?',
+  'Где бы вы устроили уютный вечер без телефонов?',
+  'Каким был бы ваш идеальный выходной?',
+  'Какая суперспособность полезнее в обычный день?',
+  'Что бы вы приготовили вдвоём на кухне?',
+  'Какое новое место хотите открыть для себя?',
+  'Какая песня точно поднимет вам настроение?',
+  'Какой абсурдный праздник вы могли бы придумать?',
+  'Что сделало бы эту неделю интереснее?'
+];
+const ideaDeck = [
+  ['🎨','Нарисуйте друг друга за 60 секунд'], ['🧩','Сыграйте в три раунда мемори'],
+  ['🍿','Выберите фильм монеткой'], ['📷','Покажите друг другу случайное фото'],
+  ['🧠','Придумайте по три вопроса'], ['🎵','Обменяйтесь треками дня'],
+  ['🌆','Спланируйте прогулку в новом месте'], ['🍪','Придумайте необычное печенье'],
+  ['✨','Назовите по одной приятной мелочи дня'], ['🛸','Придумайте название своей планеты'],
+  ['🕹','Устройте реванш в крестики-нолики'], ['🎭','Изобразите эмоцию без слов'],
+  ['💌','Оставьте друг другу короткую записку'], ['🌿','Придумайте цель на выходные']
+];
+function ensureDuo(room){
+  room.duo ||= {round:0,answers:{},reveal:false,idea:null,drawings:[]};
+  room.duo.answers ||= {};
+  room.duo.drawings ||= [];
+  return room.duo;
+}
 const rooms = new Map();
 // Local persistence. Use a persistent disk in production; some free hosting tiers erase files.
 const DATA_DIR = resolve(process.env.PULSE_DATA_DIR || fileURLToPath(new URL('./data/', import.meta.url)));
@@ -70,7 +99,7 @@ function queueSave(){
       await mkdir(DATA_DIR,{recursive:true});
       const rows=Array.from(rooms.values()).map(r=>({
         code:r.code,members:r.members.map(({id,name})=>({id,name})),
-        createdAt:r.createdAt,updatedAt:r.updatedAt,tasks:r.tasks,messages:r.messages,game:r.game,stats:r.stats,lastPulse:r.lastPulse
+        createdAt:r.createdAt,updatedAt:r.updatedAt,tasks:r.tasks,messages:r.messages,game:r.game,stats:r.stats,lastPulse:r.lastPulse,duo:r.duo
       }));
       const temp=DATA_FILE+'.tmp';await writeFile(temp,JSON.stringify(rows));await rename(temp,DATA_FILE);
     }catch(err){console.error('Save failed:',err.message);}
@@ -82,7 +111,7 @@ try {
   for(const r of rows){
     if(!r?.code || Date.now()-(r.updatedAt||r.createdAt)>30*86400000)continue;
     r.members=(r.members||[]).map(m=>({...m,ws:null}));r.emptyAt=Date.now();
-    r.lastPulse=r.lastPulse||{};
+    r.lastPulse=r.lastPulse||{};ensureDuo(r);
     rooms.set(r.code,r);
   }
 }catch(err){if(err.code!=='ENOENT')console.error('Restore failed:',err.message);}
@@ -133,7 +162,12 @@ function viewFor(room,id){
     game.answerSet={};for(const m of room.members)game.answerSet[m.id]=game.answers[m.id]!==undefined;
     if(!game.reveal)delete game.answers;
   }
-  return {room:room.code, members:membersView(room), self:id, tasks:room.tasks, messages:room.messages, game, stats:room.stats, createdAt:room.createdAt};
+  const duo=ensureDuo(room);
+  const answerSet=Object.fromEntries(room.members.map(m=>[m.id,Boolean(duo.answers[m.id])]));
+  const duoView={prompt:duoPrompts[duo.round%duoPrompts.length],round:duo.round,
+    answerSet,answers:duo.reveal?duo.answers:{},reveal:duo.reveal,
+    idea:duo.idea,drawings:duo.drawings};
+  return {duo:duoView,room:room.code, members:membersView(room), self:id, tasks:room.tasks, messages:room.messages, game, stats:room.stats, createdAt:room.createdAt};
 }
 function broadcast(room){room.updatedAt=Date.now();for(const m of room.members)send(m.ws,{type:'state',data:viewFor(room,m.id)});queueSave();}
 function initiateGame(type, ids){
@@ -298,7 +332,7 @@ function enterRoom(ws, payload, create=false){
   const name=text(payload.name,24)||'Игрок';
   if(!/^[a-zA-Z0-9-]{12,80}$/.test(clientId)){fail(ws,'Неверный идентификатор устройства.');return;}
   if(create){
-    room={code:code(),members:[],createdAt:Date.now(),updatedAt:Date.now(),tasks:structuredClone(defaultTasks),messages:[],game:null,stats:{pulses:0},lastPulse:{},emptyAt:null};
+    room={code:code(),members:[],createdAt:Date.now(),updatedAt:Date.now(),tasks:structuredClone(defaultTasks),messages:[],game:null,stats:{pulses:0},lastPulse:{},duo:{round:0,answers:{},reveal:false,idea:null,drawings:[]},emptyAt:null};
     rooms.set(room.code,room);
   } else {
     room=rooms.get(text(payload.room,12).toUpperCase());
@@ -343,6 +377,41 @@ wss.on('connection',ws=>{
     }
     if(msg.type==='remove-task'){
       room.tasks=room.tasks.filter(t=>t.id!==text(msg.id,90));broadcast(room);return;
+    }
+    if(msg.type==='duo-answer'){
+      const duo=ensureDuo(room),answer=text(msg.answer,180);
+      if(!answer || duo.reveal || duo.answers[id] || room.members.length!==2)return;
+      duo.answers[id]=answer;
+      if(room.members.every(m=>duo.answers[m.id]))duo.reveal=true;
+      broadcast(room);return;
+    }
+    if(msg.type==='duo-next'){
+      const duo=ensureDuo(room);
+      if(!duo.reveal)return;
+      duo.round++;duo.answers={};duo.reveal=false;
+      broadcast(room);return;
+    }
+    if(msg.type==='duo-idea'){
+      const duo=ensureDuo(room);
+      let idx=randomInt(ideaDeck.length);
+      if(duo.idea && ideaDeck.length>1){while(idx===duo.idea.index)idx=randomInt(ideaDeck.length);}
+      duo.idea={index:idx,emoji:ideaDeck[idx][0],text:ideaDeck[idx][1],at:Date.now()};
+      broadcast(room);return;
+    }
+    if(msg.type==='duo-sketch'){
+      const duo=ensureDuo(room);
+      const pts=Array.isArray(msg.points)?msg.points:[];
+      if(pts.length<2 || pts.length>110)return;
+      const points=pts.map(p=>Array.isArray(p)&&p.length===2?[Number(p[0]),Number(p[1])]:null);
+      if(points.some(p=>!p || p.some(n=>!Number.isFinite(n)||n<0||n>300)))return;
+      const clean=points.map(p=>p.map(n=>Math.round(n*10)/10));
+      const color=['#C9A7FF','#96E9D2','#FFABBF','#FDD57D'].includes(msg.color)?msg.color:'#C9A7FF';
+      duo.drawings.push({id,points:clean,color});duo.drawings=duo.drawings.slice(-100);
+      broadcast(room);return;
+    }
+    if(msg.type==='duo-undo'){
+      const duo=ensureDuo(room),idx=duo.drawings.findLastIndex(d=>d.id===id);
+      if(idx>=0){duo.drawings.splice(idx,1);broadcast(room);}return;
     }
     if(msg.type==='chat'){
       const body=text(msg.text,600);if(!body)return;
