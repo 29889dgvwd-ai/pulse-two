@@ -131,15 +131,15 @@ document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click
 function openTab(tab){currentTab=tab;render();window.scrollTo({top:0,behavior:'smooth'});}
 function render(){
   if(!roomState)return;
-  const editing=document.activeElement?.matches?.('input[name]')?document.activeElement:null;
+  const editing=document.activeElement?.matches?.('input[name], textarea[name]')?document.activeElement:null;
   const editingForm=editing?.closest('form[data-form]')?.dataset.form;
   const editingName=editing?.name;
   const editingValue=editing?.value;
   document.querySelectorAll('[data-tab]').forEach(el=>el.classList.toggle('active',el.dataset.tab===currentTab));
-  $('#pageCrumb').textContent={home:'Главная',games:'Игротека',tasks:'Наши планы',connection:'Связь'}[currentTab];
-  page.innerHTML={home:renderHome,games:renderGames,tasks:renderTasks,connection:renderConnection}[currentTab]();
+  $('#pageCrumb').textContent={home:'Главная',games:'Игротека',tasks:'Наши планы',connection:'Связь',together:'Вместе'}[currentTab];
+  page.innerHTML={home:renderHome,games:renderGames,tasks:renderTasks,connection:renderConnection,together:renderTogether}[currentTab]();
   if(editingForm && editingName){
-    const fresh=page.querySelector(`form[data-form="${editingForm}"] input[name="${editingName}"]`);
+    const fresh=page.querySelector(`form[data-form="${editingForm}"] [name="${editingName}"]`);
     if(fresh){fresh.value=editingValue;fresh.focus({preventScroll:true});}
   }
   if(currentTab==='connection'){
@@ -162,6 +162,8 @@ function renderHome(){
     <section class="home-hero"><div class="hero-overline">ВАШЕ ПРОСТРАНСТВО</div><h2>Моменты,<br>которые <i>ваши.</i></h2><p>Игры, неожиданные сигналы и списки дел, которые здорово закрывать вместе.</p><div class="hero-art" aria-hidden="true"></div><div class="hero-actions"><button class="hero-action" data-action="nav" data-tab="games">Выбрать игру ↗</button><button class="hero-action alt" data-action="nav" data-tab="connection">Позвонить ↗</button></div></section>
     <section class="card heart-card"><div class="eyebrow">МИНИ-СИГНАЛЫ</div><h3>Тук-тук.<br>Я здесь! ♡</h3><p>Нажми кнопку — у другого человека появится сигнал. На поддерживаемых телефонах включится вибрация.</p><div class="pulse-row"><button data-action="pulse" data-kind="hello" class="pulse-btn"><b>💜</b> Привет</button><button data-action="pulse" data-kind="highfive" class="pulse-btn"><b>✋</b> Дай пять</button><button data-action="pulse" data-kind="support" class="pulse-btn"><b>✨</b> Поддержка</button></div><div class="stat-line">Отправлено сигналов вместе: ${roomState.stats?.pulses||0}</div></section>
   </div>
+  <div class="section-head"><h3>Новые фишки для двоих</h3><button class="mini-link" data-action="nav" data-tab="together">Попробовать все ↗</button></div>
+  <div class="grid duo-home-grid"><button class="duo-preview idea" data-action="nav" data-tab="together"><span>🎲</span><small>КОЛЕСО МОМЕНТОВ</small><b>Что будем делать сегодня?</b><i>Крутить ↗</i></button><button class="duo-preview secret" data-action="nav" data-tab="together"><span>💌</span><small>ТАЙНЫЙ ВОПРОС</small><b>Ответы откроются вместе</b><i>Ответить ↗</i></button><button class="duo-preview sketch" data-action="nav" data-tab="together"><span>✏️</span><small>ЖИВОЙ ХОЛСТ</small><b>Нарисуйте что-то вдвоём</b><i>Рисовать ↗</i></button></div>
   <div class="section-head"><h3>Ваши живые виджеты</h3><button class="mini-link" data-action="nav" data-tab="tasks">Все планы ↗</button></div>
   <div class="grid widget-grid"><section class="card soft-lav"><div class="widget-top"><div><div class="eyebrow">НАШИ МАЛЕНЬКИЕ ЦЕЛИ</div><h3>Прогресс на двоих</h3></div><span class="widget-icon">☑</span></div><div class="progress-meta"><b>${p.percent}%</b><small>${p.done} из ${p.total} выполнено вместе</small></div>${progressBars(p.percent)}<div class="task-snippet">${p.tasks.slice(0,4).map(taskMini).join('')||'<span class="muted">Добавьте первый пункт!</span>'}</div></section>
   <section class="card feature-tile"><div><div class="eyebrow">ВАШ СЕГОДНЯШНИЙ НАСТРОЙ</div><div class="big-symbol">${partnerHere()?'✳':'◌'}</div><h3>${partnerHere()?'Вы оба здесь!':'Ждём подключения…'}</h3><p>${partnerHere()?`Сейчас на связи ${safe(people.map(x=>x.name).join(' и '))}. Самое время сыграть.`:'Отправь приглашение — тогда вы сможете играть в реальном времени и общаться голосом.'}</p></div><div class="chips"><span class="chip mint">12 мини-игр</span><span class="chip pink">голосовой чат</span><span class="chip">общие задачи</span></div></section></div>
@@ -208,6 +210,40 @@ function gameView(g){
   if(g.type==='cipher')return `${scoreView(g)}<div class="poll-card"><span class="eyebrow">ПЕРЕМЕШАННЫЕ БУКВЫ</span><h3 style="font-size:36px;letter-spacing:.15em;overflow-wrap:anywhere">${safe(g.scrambled)}</h3><p class="muted">Тема: ${safe(g.hint)}</p><form data-form="cipher" class="guess-grid"><input name="guess" class="text-input" style="width:min(220px,60vw);font-size:16px" autocomplete="off" placeholder="Слово…" maxlength="40" ${g.winner?'disabled':''} required><button class="btn primary" ${g.winner?'disabled':''}>Проверить</button></form></div>${g.winner?`<div class="result-strip">${winnerText(g.winner)}</div>${actionBtn('Новое слово →','next')}`:'<p class="arena-help">Кто первым разгадает слово — тому балл. Ошибаться можно!</p>'}<div class="guess-history">${(g.guesses||[]).slice(-6).map(x=>`<span class="guess-chip">${safe(statusName(x.id))}: ${safe(x.guess)} ${x.correct?'✓':'✕'}</span>`).join('')}</div>`;
   return '<div class="empty-view">Игра недоступна</div>';
 }
+function renderTogether(){
+ const d=roomState.duo||{},other=partner(),myAnswer=d.answerSet?.[selfId],answerText=d.answers||{};
+ const strokes=(d.drawings||[]).map(x=>`<polyline points="${x.points.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${safe(x.color)}" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" />`).join('');
+ return `${heading('Наше «вместе».','Три маленьких сюрприза, которые работают одновременно на двух телефонах.',`<span class="chip pink">NEW · 3 ФИШКИ</span>`)}${inviteCard()}
+ <div class="together-stack">
+ <section class="duo-panel idea-panel"><div class="duo-panel-label">01 / СПОНТАННЫЙ ПЛАН</div><h2>Колесо моментов <span>🎲</span></h2><p>Не знаете, чем заняться? Пусть приложение придумает небольшой план для вас.</p><div class="idea-reveal">${d.idea?`<span>${safe(d.idea.emoji)}</span><strong>${safe(d.idea.text)}</strong>`:`<span>✨</span><strong>Нажми кнопку и получи идею</strong>`}</div><button data-action="duo-idea" class="btn primary">${d.idea?'Ещё идея ↻':'Удиви нас ↗'}</button></section>
+ <section class="duo-panel question-panel"><div class="duo-panel-label">02 / УЗНАЙТЕ ДРУГ ДРУГА</div><h2>Тайный вопрос <span>💌</span></h2><p>Вы оба отвечаете. Чужой ответ останется тайной, пока не ответят двое.</p><div class="question-prompt"><small>ВОПРОС ${1+(d.round||0)}</small><h3>${safe(d.prompt||'Какой самый приятный момент дня?')}</h3></div>
+ ${d.reveal?`<div class="duo-answers">${roomState.members.map(m=>`<div><small>${safe(m.name)}</small><strong>${safe(answerText[m.id]||'—')}</strong></div>`).join('')}</div><button data-action="duo-next" class="btn primary">Следующий вопрос →</button>`:myAnswer?`<div class="duo-wait">✓ Твой ответ сохранён. ${other?.id&&d.answerSet?.[other.id]?'Ответы готовы…':'Ждём второго человека.'}</div>`:`<form data-form="duo-answer" class="duo-answer-form"><textarea name="answer" maxlength="180" rows="2" required class="text-input" placeholder="Твой ответ (до 180 символов)…"></textarea><button class="btn primary">Запечатать ответ ↗</button></form>`}
+ </section>
+ <section class="duo-panel canvas-panel"><div class="duo-panel-label">03 / СОВМЕСТНОЕ ТВОРЧЕСТВО</div><h2>Рисуем вдвоём <span>✏️</span></h2><p>Рисуй пальцем. Линии появятся на экране второго человека.</p><div class="sketch-colors"><button type="button" class="color-dot picked" style="--ink:#C9A7FF" data-action="sketch-color" data-color="#C9A7FF" aria-label="Фиолетовый"></button><button type="button" class="color-dot" style="--ink:#96E9D2" data-action="sketch-color" data-color="#96E9D2" aria-label="Мятный"></button><button type="button" class="color-dot" style="--ink:#FFABBF" data-action="sketch-color" data-color="#FFABBF" aria-label="Розовый"></button><button type="button" class="color-dot" style="--ink:#FDD57D" data-action="sketch-color" data-color="#FDD57D" aria-label="Жёлтый"></button></div>
+ <div class="sketch-wrap"><svg id="duoCanvas" aria-label="Общий холст для рисования" role="img" viewBox="0 0 300 180" preserveAspectRatio="none">${strokes}<polyline id="liveStroke" fill="none" stroke="#C9A7FF" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" /></svg></div>
+ <div class="sketch-bottom"><span>✦ Линии сохраняются в комнате</span><button type="button" data-action="sketch-undo" class="btn outline sm">Отменить мою линию ↶</button></div>
+ </section></div>`;
+}
+let sketchInk='#C9A7FF',sketchPoints=null,sketchPointer=null;
+function sketchPoint(e, svg){
+ const rect=svg.getBoundingClientRect();return [Math.min(300,Math.max(0,Math.round((e.clientX-rect.left)/rect.width*300*10)/10)),Math.min(180,Math.max(0,Math.round((e.clientY-rect.top)/rect.height*180*10)/10))];
+}
+page.addEventListener('pointerdown',e=>{
+ const svg=e.target.closest?.('#duoCanvas');if(!svg||!e.isPrimary)return;
+ e.preventDefault();sketchPoints=[sketchPoint(e,svg)];sketchPointer=e.pointerId;svg.setPointerCapture(e.pointerId);
+});
+page.addEventListener('pointermove',e=>{
+ const svg=e.target.closest?.('#duoCanvas');if(!svg||sketchPoints===null||e.pointerId!==sketchPointer)return;
+ e.preventDefault();if(sketchPoints.length<105){sketchPoints.push(sketchPoint(e,svg));$('#liveStroke',svg).setAttribute('points',sketchPoints.map(p=>p.join(',')).join(' '));$('#liveStroke',svg).setAttribute('stroke',sketchInk);}
+});
+function finishSketch(e){
+ if(sketchPoints===null||e.pointerId!==sketchPointer)return;
+ const points=sketchPoints;sketchPoints=null;sketchPointer=null;
+ if(points.length===1)points.push([Math.min(300,points[0][0]+.1),points[0][1]]);
+ send({type:'duo-sketch',points,color:sketchInk});
+}
+page.addEventListener('pointerup',finishSketch);page.addEventListener('pointercancel',finishSketch);
+
 function renderTasks(){
   const p=widgetProgress(),both=roomState.members.length===2;
   return `${heading('Наши планы.','Вы оба можете добавлять задачи и отмечать свою часть.')}${inviteCard()}<div class="grid task-section-grid"><section class="card"><div class="eyebrow">ОБЩИЙ ЧЕК-ЛИСТ</div><h3 style="margin:9px 0 10px">Наш маленький маршрут</h3><p class="muted">Пункт становится полностью выполненным, когда галочку поставили оба.</p>
@@ -233,6 +269,13 @@ page.addEventListener('click',e=>{
   const d=button.dataset;
   if(d.action==='nav'){openTab(d.tab);return;}
   if(d.action==='invite'){copyInvite();return;}
+  if(d.action==='duo-idea'){send({type:'duo-idea'});return;}
+  if(d.action==='duo-next'){send({type:'duo-next'});return;}
+  if(d.action==='sketch-undo'){send({type:'duo-undo'});return;}
+  if(d.action==='sketch-color'){
+    sketchInk=d.color;
+    page.querySelectorAll('.color-dot').forEach(dot=>dot.classList.toggle('picked',dot.dataset.color===sketchInk));return;
+  }
   if(d.action==='toggle-task'){send({type:'toggle-task',id:d.id});return;}
   if(d.action==='remove-task'){send({type:'remove-task',id:d.id});return;}
   if(d.action==='pulse'){
@@ -257,6 +300,7 @@ page.addEventListener('submit',e=>{
   const form=e.target.closest('form[data-form]');if(!form)return;e.preventDefault();
   const d=new FormData(form),type=form.dataset.form;
   if(type==='add-task'){const text=String(d.get('text')||'').trim();if(text)send({type:'add-task',text});}
+  if(type==='duo-answer'){const answer=String(d.get('answer')||'').trim();if(answer)send({type:'duo-answer',answer});}
   if(type==='chat'){const text=String(d.get('text')||'').trim();if(text)send({type:'chat',text});}
   if(type==='words'){const word=String(d.get('word')||'').trim();if(word)send({type:'game-action',kind:'word',word});}
   if(type==='number'){send({type:'game-action',kind:'guess',guess:Number(d.get('guess'))});}
