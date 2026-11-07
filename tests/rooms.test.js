@@ -70,6 +70,29 @@ test('pairing, tasks, chat, 12 games and privacy',async()=>{
  assert.equal((await received(a,m=>m.type==='signal'&&m.data.kind==='answer')).data.kind,'answer');
  send(a,{type:'hangup'});
  assert.equal((await received(b,m=>m.type==='hangup')).from,ids[0]);
+ // New shared experiences: hidden answers, random idea, synchronized canvas and validation.
+ send(a,{type:'duo-answer',answer:'Побродить по красивому парку'});
+ const sealed=await received(b,m=>m.type==='state'&&m.data.duo?.answerSet?.[ids[0]]===true);
+ assert.deepEqual(sealed.data.duo.answers,{});
+ assert.equal(sealed.data.duo.reveal,false);
+ send(b,{type:'duo-answer',answer:'Приготовить вафли'});
+ const revealed=await received(a,m=>m.type==='state'&&m.data.duo?.reveal===true);
+ assert.equal(revealed.data.duo.answers[ids[1]],'Приготовить вафли');
+ send(b,{type:'duo-next'});
+ const next=await received(a,m=>m.type==='state'&&m.data.duo?.round===1);
+ assert.deepEqual(next.data.duo.answers,{});
+ send(a,{type:'duo-idea'});
+ const idea=await received(b,m=>m.type==='state'&&Boolean(m.data.duo?.idea));
+ assert.ok(idea.data.duo.idea.text.length>5);
+ send(a,{type:'duo-sketch',color:'#C9A7FF',points:[[15,25],[20,30],[35,50]]});
+ const drawn=await received(b,m=>m.type==='state'&&m.data.duo?.drawings?.length===1);
+ assert.equal(drawn.data.duo.drawings[0].id,ids[0]);
+ send(b,{type:'duo-undo'});
+ // A user must not be allowed to remove somebody else's line.
+ send(a,{type:'duo-sketch',points:[[-99,20],[2,2]],color:'#C9A7FF'});
+ send(a,{type:'duo-undo'});
+ const undone=await received(b,m=>m.type==='state'&&m.data.duo?.drawings?.length===0);
+ assert.equal(undone.data.duo.drawings.length,0);
  for(const type of ['ttt','connect','rps','match','memory','reaction','words','number','emoji','quiz','story','cipher']){
    send(a,{type:'start-game',game:type});
    const current=await received(b,m=>m.type==='state'&&m.data.game?.type===type);
