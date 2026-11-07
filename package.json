@@ -1,0 +1,16 @@
+{
+  "name": "pulse-two",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PULSE TWO — совместное пространство для двоих с играми, голосом и чек-листами",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "PULSE TWO",
+    "slug": "pulse-two",
+    "scheme": "pulsetwo",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Микрофон нужен для добровольных голосовых разговоров между двумя пользователями."
+      }
+    },
+    "android": {
+      "permissions": ["RECORD_AUDIO", "VIBRATE", "INTERNET"]
+    }
+  }
+}

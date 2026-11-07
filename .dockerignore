@@ -1,0 +1,11 @@
+node_modules
+.git
+.github
+mobile
+*.zip
+*.log
+.env
+**/.env
+**/node_modules
+*.png
+data

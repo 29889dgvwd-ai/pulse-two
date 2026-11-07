@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#141220" />
+  <meta name="description" content="PULSE TWO — игры, голос и маленькие сигналы для двоих." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="manifest" href="/manifest.json" />
+  <title>PULSE TWO — ваше пространство</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <div id="setup" class="setup-screen">
+    <div class="setup-orbit a"></div><div class="setup-orbit b"></div>
+    <div class="setup-card">
+      <div class="setup-brand"><span class="logo-mark">✳</span> PULSE<span class="brand-two">TWO</span></div>
+      <div class="setup-decoration"><span>✦</span><span>♡</span><span>✳</span></div>
+      <div class="eyebrow">ВАШ МАЛЕНЬКИЙ МИР</div>
+      <h1>Всё веселье<br><em>на двоих.</em></h1>
+      <p class="muted">Игры на расстоянии, совместные мини-планы, голос и сигналы одним касанием.</p>
+      <div class="setup-steps"><span><b>01</b> Создай комнату</span><span><b>02</b> Пригласи человека</span><span><b>03</b> Играйте</span></div>
+      <label class="field-label" for="setupName">Как тебя зовут?</label>
+      <input id="setupName" class="text-input" autocomplete="nickname" maxlength="24" placeholder="Твоё имя" />
+      <div class="setup-buttons"><button class="btn primary" id="createRoom">Создать пространство <span>↗</span></button></div>
+      <div class="setup-divider"><span>или войди по коду</span></div>
+      <form id="joinForm" class="join-row"><input aria-label="Код комнаты" id="joinCode" class="text-input code-field" maxlength="8" placeholder="КОД ИЗ 8 СИМВОЛОВ" autocapitalize="characters" /><button class="btn soft" type="submit">Войти →</button></form>
+      <div class="setup-note">Без регистрации • Только два человека • Бесплатный прототип</div>
+    </div>
+  </div>
+  <div id="appShell" class="shell hidden">
+    <aside class="sidebar">
+      <div class="sidebar-head"><span class="logo-mark">✳</span><span>PULSE<b>TWO</b></span></div>
+      <p class="sidebar-sub">ваше пространство для двоих</p>
+      <div class="sidebar-group-label">ПРОСТРАНСТВО</div>
+      <nav class="sidebar-nav" aria-label="Основное меню">
+        <button data-tab="home" class="nav-item active"><span class="nav-icon">⌂</span> Главная</button>
+        <button data-tab="games" class="nav-item"><span class="nav-icon">◈</span> Игротека <span class="side-count">12</span></button>
+        <button data-tab="tasks" class="nav-item"><span class="nav-icon">☑</span> Наши планы</button>
+        <button data-tab="connection" class="nav-item"><span class="nav-icon">◉</span> Связь</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="tiny-note"><span>✦</span><div>Маленькие моменты<br>делают день ярче.</div></div>
+        <button id="leaveRoom" class="bare-link">Выйти из комнаты →</button>
+      </div>
+    </aside>
+    <div class="app-column">
+      <header class="topbar">
+        <div class="topbar-left"><span class="mobile-logo"><span class="logo-mark">✳</span> PULSE<b>TWO</b></span><span id="pageCrumb" class="crumb">Главная</span></div>
+        <div class="topbar-actions"><span id="peerStatus" class="connection-status">● Ожидаем второго игрока</span><button id="copyRoom" class="room-code-btn" title="Скопировать код комнаты">Код: <b>------</b> ⧉</button></div>
+      </header>
+      <main id="page" class="page" tabindex="-1"></main>
+    </div>
+    <nav class="bottom-nav" aria-label="Мобильное меню">
+      <button data-tab="home" class="bottom-link active"><span>⌂</span><small>Главная</small></button>
+      <button data-tab="games" class="bottom-link"><span>◈</span><small>Игры</small></button>
+      <button data-tab="tasks" class="bottom-link"><span>☑</span><small>Планы</small></button>
+      <button data-tab="connection" class="bottom-link"><span>◉</span><small>Связь</small></button>
+    </nav>
+  </div>
+  <div id="incomingCall" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="callTitle">
+    <div class="call-modal"><div class="incoming-graphic">◉</div><p class="eyebrow">ВХОДЯЩИЙ ЗВОНОК</p><h2 id="callTitle">Вас приглашают поговорить</h2><p class="muted">Разговор только между вами двумя</p><div class="modal-actions"><button id="declineCall" class="btn ghost">Отклонить</button><button id="acceptCall" class="btn primary">🎙 Ответить</button></div></div>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <audio id="remoteAudio" autoplay playsinline></audio>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

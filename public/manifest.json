@@ -1,0 +1,11 @@
+{
+  "name": "PULSE TWO — пространство для двоих",
+  "short_name": "PULSE TWO",
+  "description": "Игры, голос, совместные планы и сигналы для двоих",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#141220",
+  "theme_color": "#141220",
+  "icons": [{"src":"/icon.svg", "sizes":"any", "type":"image/svg+xml", "purpose":"any maskable"}]
+}

@@ -1,0 +1,14 @@
+services:
+  pulse-two:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PULSE_BIND:-127.0.0.1}:3000:3000"
+    environment:
+      PORT: "3000"
+      NODE_ENV: production
+      PULSE_DATA_DIR: /app/data
+    volumes:
+      - pulse-data:/app/data
+volumes:
+  pulse-data:

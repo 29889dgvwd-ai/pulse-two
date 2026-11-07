@@ -1,0 +1,11 @@
+# Free Node.js web service for PULSE TWO (HTTPS + WebSocket support).
+# Deploy through https://render.com/deploy?repo=https://github.com/29889dgvwd-ai/pulse-two
+services:
+  - type: web
+    name: pulse-two
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeployTrigger: off
