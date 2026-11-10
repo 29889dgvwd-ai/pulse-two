@@ -18,6 +18,7 @@ function next(ws,check,ms=3000){const idx=ws.buf.findIndex(check);if(idx>=0)retu
 function send(ws,msg){ws.send(JSON.stringify(msg));}
 test('studio lines, stamps, erase, undo redo and pet customization remain synchronized', async()=>{
  const a=await client(),b=await client();
+ try {
  send(a,{type:'create-room',clientId:randomUUID(),name:'Один'});
  const code=(await next(a,x=>x.type==='joined')).room;
  send(b,{type:'join-room',room:code,clientId:randomUUID(),name:'Два'});
@@ -49,7 +50,9 @@ test('studio lines, stamps, erase, undo redo and pet customization remain synchr
  assert.equal(themed.data.pet.accessory,'none','locked accessory cannot be selected');
  send(a,{type:'duo-clear'});
  await next(b,x=>x.type==='state'&&x.data.duo?.drawings?.length===0);
- a.close();b.close();
+ } finally {
+   a.close(); b.close();
+ }
 });
 test('stop studio test server',async()=>{await new Promise(resolve=>server.close(resolve));await rm(temp,{force:true,recursive:true});});
 
