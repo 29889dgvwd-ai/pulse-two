@@ -107,6 +107,22 @@ test('pairing, tasks, chat, 12 games and privacy',async()=>{
  send(b,{type:'mood-set',mood:'invalid',note:'bad'});
  await new Promise(r=>setTimeout(r,25));
  assert.equal(mood.data.moods[ids[1]],undefined);
+ // Shared memory jar, authorship restriction, and synchronized timer.
+ send(a,{type:'moment-add',emoji:'🎮',note:'Играли вместе'});
+ const memory=await received(b,m=>m.type==='state'&&m.data.moments?.length===1);
+ const momentId=memory.data.moments[0].id;
+ assert.equal(memory.data.moments[0].note,'Играли вместе');
+ send(b,{type:'moment-delete',id:momentId});
+ send(b,{type:'moment-add',emoji:'bad',note:'Invalid'});
+ send(a,{type:'focus-start',minutes:3});
+ const focused=await received(b,m=>m.type==='state'&&m.data.focus?.duration===3);
+ assert.equal(focused.data.moments.length,1);
+ assert.ok(focused.data.focus.endAt>Date.now());
+ send(b,{type:'focus-start',minutes:10});
+ send(b,{type:'focus-stop'});
+ await received(a,m=>m.type==='state'&&m.data.focus?.endAt===0);
+ send(a,{type:'moment-delete',id:momentId});
+ await received(b,m=>m.type==='state'&&m.data.moments?.length===0);
  for(const type of ['ttt','connect','rps','match','memory','reaction','words','number','emoji','quiz','story','cipher']){
    send(a,{type:'start-game',game:type});
    const current=await received(b,m=>m.type==='state'&&m.data.game?.type===type);
