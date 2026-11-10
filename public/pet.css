@@ -1,0 +1,59 @@
+
+/* THE PLUSH LITTLE WORLD — an original animated vector pet */
+.pet-studio-card{background:linear-gradient(145deg,#352746,#28243d)}
+.pet-card-header{display:flex;align-items:start;justify-content:space-between;gap:8px}
+.pet-card-header h2 span{color:#e6b3ff}
+.pet-lvl{background:#4d3b66;color:#e8d2ff;border:1px solid #a284c28c;padding:9px 11px;border-radius:15px;white-space:nowrap;font-size:10px;font-weight:900;letter-spacing:.08em}
+.pet-world{position:relative;min-height:300px;border-radius:24px;margin:16px 0;display:flex;align-items:center;justify-content:center;overflow:hidden;isolation:isolate}
+.pet-world.theme-night{background:radial-gradient(circle at 48% 43%,#8071bd 0%,#554d83 44%,#2a3353 100%)}
+.pet-world.theme-garden{background:radial-gradient(circle at 50% 37%,#b3e7c2,#5c9e94 63%,#3b716c)}
+.pet-world.theme-sunset{background:radial-gradient(circle at 50% 30%,#ffd7ac,#ea9aaa 50%,#865e9e)}
+.pet-world-top{position:absolute;top:15px;left:15px;right:15px;display:flex;justify-content:space-between;gap:8px;color:#fff8ff;font-size:10px;font-weight:750;z-index:2;text-shadow:0 1px 6px #2c274a80}
+.pet-stars{position:absolute;top:40px;left:14%;font-size:40px;color:#ffe6a7;opacity:.85;letter-spacing:50px;animation:pet-shine 4s ease-in-out infinite}
+.pet-stars span{font-size:18px}
+.pet-world-base{position:absolute;bottom:-45px;width:80%;height:105px;filter:blur(1px);border-radius:50%;background:#ffffff26}
+.mascot-svg{width:min(290px,83%);max-height:250px;z-index:1;overflow:visible;filter:drop-shadow(0 20px 23px #30275270)}
+.mascot-svg.compact{width:138px;max-height:124px}
+.mascot-float{transform-origin:50% 60%;animation:mascot-bob 2.9s ease-in-out infinite}
+.mascot-eyes{transform-origin:50% 50%;animation:mascot-blink 6s infinite}
+.mascot-sparkle{animation:pet-shine 3s ease-in-out infinite}
+.pet-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:16px 0}
+.pet-stats label{display:flex;justify-content:space-between;gap:10px;color:#d0c1df;font-weight:850;letter-spacing:.08em;font-size:10px}
+.pet-stats label b{color:#fff}
+.pet-bar,.pet-progress-track{height:9px;background:#4e405f;border-radius:100px;overflow:hidden;margin-top:8px}
+.pet-bar i,.pet-progress-track i{display:block;height:100%;background:linear-gradient(90deg,#8bdcc2,#b9f0da);border-radius:100px;transition:width .35s ease}
+.pet-bar.pink i{background:linear-gradient(90deg,#f8a0c3,#d4b0ff)}
+.pet-activity{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pet-activity button{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;padding:13px 4px;border:1px solid #7e6b96;background:#59456e;border-radius:17px;color:#ffedff;font-size:24px;transition:transform .18s}
+.pet-activity button:active{transform:scale(.94)}
+.pet-activity button b{font-size:11px}
+.pet-progress{display:flex;align-items:center;gap:10px;margin-top:18px;color:#e0d5ee}
+.pet-progress strong{white-space:nowrap;font-size:11px}
+.pet-progress-track{flex:1;margin:0}
+.pet-progress-track i{background:#f8d08d}
+.pet-progress small{font-size:10px;white-space:nowrap}
+.pet-custom{background:#241d34bb;border-radius:20px;margin-top:20px;padding:16px;border:1px solid #5f4e71}
+.pet-custom-heading{display:flex;gap:10px;justify-content:space-between;align-items:center}
+.pet-custom-heading h3{font-size:17px;margin:0}
+.pet-custom-heading span{font-size:9px;color:#b8a9d7;letter-spacing:.12em}
+.pet-name-form{display:flex;gap:8px;margin-top:12px}
+.pet-name-form input{flex:1;min-width:0}
+.pet-name-form button{white-space:nowrap}
+.pet-option-row{display:flex;gap:12px;justify-content:space-between;align-items:center;margin-top:20px;flex-wrap:wrap}
+.pet-option-row>label{font-size:12px;color:#d3c9df;font-weight:800}
+.pet-swatches,.pet-themes,.pet-accessories{display:flex;gap:6px;flex-wrap:wrap}
+.pet-swatch{width:27px;height:27px;border-radius:50%;background:var(--swatch);border:3px solid #ffffff3d}
+.pet-swatch.selected{outline:2px solid #e5c6ff;outline-offset:2px}
+.pet-themes button{border:1px solid #66567b;background:#42364e;color:#e4d7f7;padding:9px 11px;border-radius:11px;font-size:11px}
+.pet-themes button.selected{background:#d9baff;color:#241a37}
+.pet-accessories{width:100%}
+.pet-accessory{display:flex;align-items:center;gap:5px;flex-direction:column;min-width:56px;flex:1;background:#392c4b;border-radius:13px;color:#f6eaff;border:1px solid #685580;padding:10px 3px;font-size:18px}
+.pet-accessory small{font-size:9px}
+.pet-accessory.selected{background:#6a4a87;border-color:#d2a3ff}
+.pet-accessory:disabled{opacity:.4;cursor:not-allowed}
+.pet-footer{color:#bfaed1;font-size:10px;margin-top:14px}
+@keyframes mascot-bob{0%,100%{transform:translateY(2px) rotate(-1deg)}50%{transform:translateY(-9px) rotate(1deg)}}
+@keyframes mascot-blink{0%,89%,93%,100%{transform:scaleY(1)}91%{transform:scaleY(.1)}}
+@keyframes pet-shine{0%,100%{opacity:.55;transform:scale(.96)}50%{opacity:1;transform:scale(1.06)}}
+@media(max-width:440px){.pet-world{min-height:260px}.mascot-svg{width:80%}.pet-name-form{flex-direction:column}.pet-name-form button{width:100%}.pet-world-top{font-size:9px}.pet-card-header h2{font-size:23px}}
+@media(prefers-reduced-motion:reduce){.mascot-float,.mascot-eyes,.mascot-sparkle,.pet-stars{animation:none!important}}
