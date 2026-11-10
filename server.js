@@ -85,15 +85,25 @@ function ensureDuo(room){
   room.duo ||= {round:0,answers:{},reveal:false,idea:null,drawings:[]};
   room.duo.answers ||= {};
   room.duo.drawings ||= [];
+  room.duo.redo ||= {};
+  room.duo.challenge ||= {prompt:null,endAt:0,by:null};
   return room.duo;
 }
 function ensurePet(room){
   const previous=room.pet&&typeof room.pet==='object'?room.pet:{};
   const bound=(n,fallback)=>Number.isFinite(n)?Math.max(0,Math.min(100,n)):fallback;
   room.pet={energy:bound(previous.energy,72),joy:bound(previous.joy,68),xp:Number.isInteger(previous.xp)&&previous.xp>=0?Math.min(100000,previous.xp):0,
-    lastCare:previous.lastCare&&typeof previous.lastCare==='object'?previous.lastCare:{},lastAction:previous.lastAction||null};
+    lastCare:previous.lastCare&&typeof previous.lastCare==='object'?previous.lastCare:{},lastAction:previous.lastAction||null,
+    name:typeof previous.name==='string'&&previous.name.trim()?previous.name.slice(0,16):'Искра',
+    skin:['lavender','peach','mint','blue'].includes(previous.skin)?previous.skin:'lavender',
+    accessory:['none','bow','glasses','crown','star'].includes(previous.accessory)?previous.accessory:'none',
+    room:['night','garden','sunset'].includes(previous.room)?previous.room:'night'};
   return room.pet;
 }
+const inkColors=['#C9A7FF','#96E9D2','#FFABBF','#FDD57D','#F4F5FB','#8DB6FC','#FF8E6D','#34324D'];
+function allowedInk(value){return inkColors.includes(value)?value:inkColors[0];}
+function lineWidth(value){const n=Number(value);return Number.isFinite(n)?Math.max(2,Math.min(12,Math.round(n))):4;}
+function validPoint(point){return Array.isArray(point)&&point.length===2&&Number.isFinite(point[0])&&Number.isFinite(point[1])&&point[0]>=0&&point[0]<=300&&point[1]>=0&&point[1]<=180;}
 function ensureExperiences(room){
   if(!Array.isArray(room.moments))room.moments=[];
   if(!room.focus || typeof room.focus!=='object')room.focus={endAt:0,duration:0,by:null};
@@ -193,7 +203,8 @@ function viewFor(room,id){
   const answerSet=Object.fromEntries(room.members.map(m=>[m.id,Boolean(duo.answers[m.id])]));
   const duoView={prompt:duoPrompts[duo.round%duoPrompts.length],round:duo.round,
     answerSet,answers:duo.reveal?duo.answers:{},reveal:duo.reveal,
-    idea:duo.idea,drawings:duo.drawings};
+    idea:duo.idea,drawings:duo.drawings,challenge:duo.challenge,
+    canRedo:Boolean(duo.redo[id]?.length)};
   const hype=ensureHype(room);
   const hypeReveal=room.members.length===2&&room.members.every(m=>Object.hasOwn(hype.votes,m.id));
   const hypeView={round:hype.round,prompt:hypeDeck[hype.round%hypeDeck.length],answerSet:Object.fromEntries(room.members.map(m=>[m.id,Object.hasOwn(hype.votes,m.id)])),reveal:hypeReveal,votes:hypeReveal?hype.votes:{},match:hypeReveal&&room.members.every(m=>hype.votes[m.id]===true),matches:hype.matches};
@@ -429,20 +440,73 @@ wss.on('connection',ws=>{
       duo.idea={index:idx,emoji:ideaDeck[idx][0],text:ideaDeck[idx][1],at:Date.now()};
       broadcast(room);return;
     }
+
+    if(msg.type==='duo-live'){
+      // Transient pointer updates are forwarded, never persisted to disk.
+      const pts=Array.isArray(msg.points)?msg.points:[];
+      if(pts.length>0&&pts.length<=10 && pts.every(p=>Array.isArray(p)&&p.length===2&&
+         Number.isFinite(p[0])&&Number.isFinite(p[1])&&p[0]>=0&&p[0]<=300&&p[1]>=0&&p[1]<=180)){
+        const last=ws.lastStudioMove||0;
+        if(Date.now()-last>=35){
+          ws.lastStudioMove=Date.now();
+          relay(room,id,{type:'duo-live',from:id,points:pts,color:allowedInk(msg.color),width:lineWidth(msg.width)});
+        }
+      }
+      return;
+    }
     if(msg.type==='duo-sketch'){
       const duo=ensureDuo(room);
       const pts=Array.isArray(msg.points)?msg.points:[];
-      if(pts.length<2 || pts.length>110)return;
-      const points=pts.map(p=>Array.isArray(p)&&p.length===2?[Number(p[0]),Number(p[1])]:null);
-      if(points.some(p=>!p || p.some(n=>!Number.isFinite(n)||n<0||n>300)))return;
-      const clean=points.map(p=>p.map(n=>Math.round(n*10)/10));
-      const color=['#C9A7FF','#96E9D2','#FFABBF','#FDD57D'].includes(msg.color)?msg.color:'#C9A7FF';
-      duo.drawings.push({id,points:clean,color});duo.drawings=duo.drawings.slice(-100);
+      if(pts.length<2||pts.length>110||!pts.every(validPoint))return;
+      const points=pts.map(p=>p.map(n=>Math.round(n*10)/10));
+      duo.drawings.push({id,points,color:allowedInk(msg.color),width:lineWidth(msg.width)});
+      duo.drawings=duo.drawings.slice(-220);duo.redo={};
+      broadcast(room);return;
+    }
+    if(msg.type==='duo-stamp'){
+      const duo=ensureDuo(room);
+      const x=Number(msg.x),y=Number(msg.y);
+      if(!['star','heart','flower','smile'].includes(msg.stamp)||!validPoint([x,y]))return;
+      duo.drawings.push({id,kind:'stamp',stamp:msg.stamp,x:Math.round(x*10)/10,y:Math.round(y*10)/10});
+      duo.drawings=duo.drawings.slice(-220);duo.redo={};
       broadcast(room);return;
     }
     if(msg.type==='duo-undo'){
       const duo=ensureDuo(room),idx=duo.drawings.findLastIndex(d=>d.id===id);
-      if(idx>=0){duo.drawings.splice(idx,1);broadcast(room);}return;
+      if(idx>=0){(duo.redo[id] ||= []).push(duo.drawings.splice(idx,1)[0]);broadcast(room);}return;
+    }
+    if(msg.type==='duo-redo'){
+      const duo=ensureDuo(room),rest=duo.redo[id];
+      if(rest?.length){duo.drawings.push(rest.pop());broadcast(room);}return;
+    }
+    if(msg.type==='duo-erase'){
+      const duo=ensureDuo(room),point=[Number(msg.x),Number(msg.y)];
+      if(!validPoint(point))return;
+      const distance=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+      const distanceSegment=(p,a,b)=>{
+        const dx=b[0]-a[0],dy=b[1]-a[1],len=dx*dx+dy*dy;
+        if(len<0.01)return distance(p,a);
+        const t=Math.max(0,Math.min(1,((p[0]-a[0])*dx+(p[1]-a[1])*dy)/len));
+        return distance(p,[a[0]+dx*t,a[1]+dy*t]);
+      };
+      const idx=duo.drawings.findLastIndex(d=>{
+        if(d.kind==='stamp')return distance(point,[d.x,d.y])<13;
+        return Array.isArray(d.points)&&d.points.some((p,i)=>i>0&&distanceSegment(point,d.points[i-1],p)<(Number(d.width)||3.8)/2+5);
+      });
+      if(idx>=0){duo.drawings.splice(idx,1);duo.redo={};broadcast(room);}
+      return;
+    }
+    if(msg.type==='duo-clear'){
+      const duo=ensureDuo(room);
+      if(duo.drawings.length){duo.drawings=[];duo.redo={};broadcast(room);}
+      return;
+    }
+    if(msg.type==='duo-challenge'){
+      const duo=ensureDuo(room),seconds=Number(msg.seconds);
+      if(![0,30,60].includes(seconds))return;
+      const topics=['Нарисуйте мечту на выходные','Космическое животное','Домик на облаке','Любимая еда','Нелепый робот','Волшебный лес','Самый смешной кот','Город будущего','Настроение в цветах'];
+      duo.challenge=seconds?{prompt:topics[randomInt(topics.length)],endAt:Date.now()+seconds*1000,by:id}:{prompt:null,endAt:0,by:id};
+      broadcast(room);return;
     }
     if(msg.type==='hype-vote'){
       const hype=ensureHype(room);
@@ -503,6 +567,19 @@ wss.on('connection',ws=>{
         room.focus={endAt:0,duration:0,by:id};broadcast(room);
       }
       return;
+    }
+    if(msg.type==='pet-rename'){
+      const pet=ensurePet(room),name=text(msg.name,16).trim();
+      if(!name)return;
+      pet.name=name;broadcast(room);return;
+    }
+    if(msg.type==='pet-customize'){
+      const pet=ensurePet(room),field=text(msg.field,20),value=text(msg.value,20);
+      const allowed={skin:['lavender','peach','mint','blue'],room:['night','garden','sunset'],accessory:['none','bow','glasses','crown','star']};
+      if(!allowed[field]?.includes(value))return;
+      const level=1+Math.floor(pet.xp/6);
+      if(field==='accessory' && ({crown:4,star:3,glasses:2,bow:1,none:1}[value]>level)){fail(ws,'Этот аксессуар откроется на новом уровне.');return;}
+      pet[field]=value;broadcast(room);return;
     }
     if(msg.type==='pet-care'){
       const kind=text(msg.kind,10),pet=ensurePet(room),now=Date.now();
