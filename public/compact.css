@@ -107,3 +107,60 @@ body{background:radial-gradient(ellipse 540px 350px at 90% -12%,#275c5544,transp
 .palette-light .text-input{background:#f7faf7;color:#214d3b;border-color:#bcd6ca}
 .palette-light .btn.primary{background:#287e62;color:white}.palette-light .btn.outline{background:#eaf4ed;border-color:#add4bf;color:#275c44}
 .palette-light .topbar-actions .room-code-btn,.palette-light .topbar-actions .logout-top{background:#e4f3e8;border-color:#a2ccb5;color:#245b42}
+
+
+/* 3.1 — concise dashboard, categories and palette toggle */
+.theme-toggle{width:36px;height:36px;border:1px solid #47766b;background:#223e45;border-radius:11px;color:#d4fae8;font-size:17px;display:grid;place-items:center;flex:none}
+.home-compact{max-width:1100px;margin:auto}
+.home-welcome{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 19px}
+.home-welcome small{font-size:10px;font-weight:850;letter-spacing:.18em;color:#85cdb6}
+.home-welcome h1{font-size:clamp(27px,4vw,40px);color:#f1fff5;margin:5px 0 7px}
+.home-welcome p{font-size:12px;color:#a8c9c0;margin:0}
+.home-online{flex:none;padding:9px 12px;border-radius:18px;font-size:10px;background:#253a42;border:1px solid #47766e;color:#aac8c1;font-weight:800}
+.home-online.yes{background:#295a4b;color:#c3f9de}
+.home-bento{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,.65fr);gap:12px}
+.home-primary,.home-signals{border-radius:23px;min-height:225px;padding:clamp(19px,2.8vw,31px);display:flex;flex-direction:column;align-items:flex-start;overflow:hidden}
+.home-primary{background:radial-gradient(circle at 86% 10%,#ffffff66 0,transparent 35%),linear-gradient(125deg,#d1f5e3,#b3e7d7 67%,#f1d1ae);color:#134438}
+.home-primary>span,.home-signals>span{font-size:10px;letter-spacing:.17em;font-weight:900}
+.home-primary h2{font-size:clamp(26px,3.7vw,41px);line-height:1.04;margin:17px 0 10px;color:#183d35}
+.home-primary em{font-style:normal;color:#39816c}
+.home-primary p{max-width:510px;line-height:1.35;font-size:12px;color:#44695c;flex:1}
+.home-primary .btn.primary{background:#1f7158;color:#fff;border-radius:13px;font-weight:800}
+.home-signals{background:radial-gradient(circle at 85% 25%,#488e7340,transparent 70%),#1c3940;border:1px solid #48736b}
+.home-signals>span{color:#a2deca}
+.home-signals h3{font-size:29px;margin:26px 0 5px;color:#eefff8}.home-signals h3 i{color:#f5c19f}
+.home-signals p{font-size:12px;color:#a8c6ba;flex:1}
+.home-pulse-actions{display:flex;gap:10px}
+.home-pulse-actions button{font-size:24px;border-radius:14px;border:1px solid #5e887a;background:#27524d;width:55px;height:50px;transition:transform .18s}
+.home-pulse-actions button:active{transform:scale(.91)}
+.home-section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:25px 0 13px}
+.home-section-title h2{font-size:20px;margin:0}.home-section-title span{color:#85b5a6;font-size:11px}
+.home-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.home-shortcut{display:grid;grid-template-columns:42px 1fr 18px;grid-template-rows:auto auto;align-items:center;gap:4px 10px;text-align:left;padding:15px;border-radius:17px;background:#1c3840;border:1px solid #446f65;color:#d9f9e9;min-width:0;transition:transform .18s,background .18s}
+.home-shortcut:hover{transform:translateY(-2px);background:#275047}
+.home-shortcut>span{grid-row:1/3;font-size:26px;align-self:center}
+.home-shortcut strong{font-size:13px;color:#f4fff8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-shortcut small{grid-column:2;font-size:10px;color:#a0c2b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-shortcut b{grid-column:3;grid-row:1/3;color:#a1deb9;font-weight:650}
+.home-summaries{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px}
+.home-summaries button{display:flex;flex-direction:column;align-items:flex-start;gap:8px;text-align:left;padding:16px;border-radius:18px;border:1px solid #446d65;color:#e4faef;background:#192e39;min-width:0}
+.home-summaries button span{font-size:10px;letter-spacing:.07em;color:#a0d5be;font-weight:800}
+.home-summaries button strong{font-size:clamp(13px,1.8vw,19px);overflow-wrap:anywhere}
+.home-summaries button small{font-size:10px;color:#8db9ac}
+.game-type-tabs{display:flex;gap:8px;overflow-x:auto;padding:5px 0 14px;scrollbar-width:thin}
+.game-type-tabs button{background:#1a343f;border:1px solid #466c65;padding:10px 16px;color:#c4ddce;border-radius:100px;white-space:nowrap;font-size:12px;font-weight:800}
+.game-type-tabs button.selected{background:#aeead0;color:#1a4437}
+.palette-light .home-welcome h1{color:#204838}
+.palette-light .home-welcome p,.palette-light .home-section-title span{color:#537f69}
+.palette-light .home-online{background:#e0f2e7;color:#295f46;border-color:#b5d4c0}
+.palette-light .home-shortcut,.palette-light .home-summaries button{background:#fffefa;border-color:#c5ded0;color:#275442}
+.palette-light .home-shortcut strong,.palette-light .home-summaries button strong{color:#214638}
+.palette-light .home-shortcut small,.palette-light .home-summaries button small,.palette-light .home-summaries button span{color:#56836f}
+.palette-light .home-shortcut b{color:#266f53}.palette-light .home-signals{background:#e1efe6;border-color:#b8d5c5}
+.palette-light .home-signals h3{color:#224836}.palette-light .home-signals p{color:#638573}
+.palette-light .home-pulse-actions button{background:#d2e9da;border-color:#9dc7af}
+.palette-light .game-type-tabs button{background:#f8fcf8;color:#376f53;border-color:#c2dcd0}.palette-light .game-type-tabs button.selected{background:#2c7e62;color:#fff}
+.palette-light .theme-toggle{background:#e3f1e7;color:#265c44;border-color:#a4cdb8}
+@media(max-width:880px){.home-bento{grid-template-columns:1fr}.home-primary,.home-signals{min-height:0}.home-primary{min-height:230px}.home-signals{min-height:155px}.home-signals h3{margin:13px 0 7px}.home-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.home-welcome{align-items:flex-start}.home-online{font-size:9px;padding:7px}.home-summaries{grid-template-columns:repeat(2,minmax(0,1fr))}.home-summaries button:last-child{grid-column:1/-1}.home-shortcut{padding:12px 9px;grid-template-columns:30px 1fr 12px;gap:5px}.home-shortcut>span{font-size:23px}.home-shortcut strong{font-size:12px}.home-shortcut small{font-size:9px}.home-welcome h1{font-size:27px}.home-primary{padding:22px}.home-primary h2{font-size:31px}}
+@media(max-width:390px){.home-online{display:none}.home-pulse-actions button{width:49px;height:45px}.topbar-actions{gap:4px}.theme-toggle{width:31px;height:31px;font-size:14px}}
