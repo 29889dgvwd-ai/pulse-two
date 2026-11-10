@@ -328,6 +328,12 @@ page.addEventListener('click',e=>{
   if(d.action==='nav'){openTab(d.tab);return;}
   if(d.action==='go-feature'){if(selectFeature(d.feature))openTab('together');return;}
   if(d.action==='game-category'){gameCategory=d.category;render();return;}
+  if(d.action==='random-game'){
+    if(!partnerHere()){toast('Для игры пригласи второго игрока');return;}
+    const picks=['rps','reaction','quiz','emoji','story','memory'];
+    const game=picks[Math.floor(Math.random()*picks.length)];
+    if(send({type:'start-game',game})){currentTab='games';render();window.scrollTo({top:0,behavior:'smooth'});}return;
+  }
   if(d.action==='invite'){shareInvite();return;}
   if(d.action==='pet-care'){send({type:'pet-care',kind:d.kind});return;}
   if(d.action==='mood-set'){
