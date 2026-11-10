@@ -35,7 +35,7 @@ test('studio lines, stamps, erase, undo redo and pet customization remain synchr
  send(b,{type:'duo-redo'});
  await next(a,x=>x.type==='state'&&x.data.duo?.drawings?.length===2);
  send(a,{type:'duo-erase',x:24,y:34});
- const erased=await next(a,x=>x.type==='state'&&x.data.duo?.drawings?.length===1);
+ const erased=await next(a,x=>x.type==='state'&&x.data.duo?.drawings?.length===1&&x.data.duo.drawings[0].kind==='stamp');
  assert.equal(erased.data.duo.drawings[0].kind,'stamp');
  send(a,{type:'duo-challenge',seconds:30});
  const challenge=await next(b,x=>x.type==='state'&&x.data.duo?.challenge?.endAt>Date.now());
