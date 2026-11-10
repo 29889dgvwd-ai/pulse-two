@@ -24,11 +24,21 @@
       <div class="eyebrow">ВАШ МАЛЕНЬКИЙ МИР</div>
       <h1>Всё веселье<br><em>на двоих.</em></h1>
       <p class="muted">Игры на расстоянии, совместные мини-планы, голос и сигналы одним касанием.</p>
-      <div class="setup-steps"><span><b>01</b> Создай комнату</span><span><b>02</b> Пригласи человека</span><span><b>03</b> Играйте</span></div>
+      <div id="setupSteps" class="setup-steps"><span><b>01</b> Создай комнату</span><span><b>02</b> Пригласи человека</span><span><b>03</b> Играйте</span></div>
       <label class="field-label" for="setupName">Как тебя зовут?</label>
       <input id="setupName" class="text-input" autocomplete="nickname" maxlength="24" placeholder="Твоё имя" />
-      <div class="setup-buttons"><button class="btn primary" id="createRoom">Создать пространство <span>↗</span></button></div>
-      <div class="setup-divider"><span>или войди по коду</span></div>
+      <div id="inviteBanner" class="invite-banner hidden">
+        <div class="invite-icon">💌</div>
+        <div class="eyebrow">ПРИГЛАШЕНИЕ ОТ ДРУГА</div>
+        <h2>Тебя ждут в комнате!</h2>
+        <p>Ты присоединишься к существующей комнате, а не создашь новую.</p>
+        <div class="invite-code">Код комнаты <b id="inviteCode">--------</b></div>
+        <button class="btn primary invite-join" id="inviteJoin" type="button">Присоединиться к другу ↗</button>
+        <button class="bare-link" id="ignoreInvite" type="button">Нет, создать свою комнату</button>
+      </div>
+      <p id="inviteError" class="invite-error hidden">В ссылке неверный код комнаты. Можно попросить новую ссылку или ввести код вручную.</p>
+      <div id="createActions" class="setup-buttons"><button class="btn primary" id="createRoom">Создать пространство <span>↗</span></button></div>
+      <div id="setupDivider" class="setup-divider"><span>или войди по коду</span></div>
       <form id="joinForm" class="join-row"><input aria-label="Код комнаты" id="joinCode" class="text-input code-field" maxlength="8" placeholder="КОД ИЗ 8 СИМВОЛОВ" autocapitalize="characters" /><button class="btn soft" type="submit">Войти →</button></form>
       <div class="setup-note">Без регистрации • Только два человека • Бесплатный прототип</div>
       <div class="install-hint">📱 <b>На iPhone:</b> после публикации открой сайт в Safari → «Поделиться» → «На экран „Домой“» → «Добавить».</div>
@@ -48,13 +58,13 @@
       </nav>
       <div class="sidebar-bottom">
         <div class="tiny-note"><span>✦</span><div>Маленькие моменты<br>делают день ярче.</div></div>
-        <button id="leaveRoom" class="bare-link">Выйти из комнаты →</button>
+        <button id="leaveRoom" class="bare-link">Выйти из профиля →</button>
       </div>
     </aside>
     <div class="app-column">
       <header class="topbar">
         <div class="topbar-left"><span class="mobile-logo"><span class="logo-mark">✳</span> PULSE<b>TWO</b></span><span id="pageCrumb" class="crumb">Главная</span></div>
-        <div class="topbar-actions"><span id="peerStatus" class="connection-status">● Ожидаем второго игрока</span><button id="copyRoom" class="room-code-btn" title="Скопировать код комнаты">Код: <b>------</b> ⧉</button></div>
+        <div class="topbar-actions"><span id="peerStatus" class="connection-status">● Ожидаем второго игрока</span><button id="copyRoom" class="room-code-btn" title="Скопировать ссылку комнаты">Код: <b>------</b> ⧉</button><button id="logoutTop" class="logout-top" title="Выйти из профиля" type="button">Выйти ↗</button></div>
       </header>
       <main id="page" class="page" tabindex="-1"></main>
     </div>

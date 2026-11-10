@@ -1,5 +1,6 @@
 /* PULSE TWO — client. Plain JavaScript, no build step. */
 import {renderExtraFeatures,attachExtraFeatures} from './extra-features.js';
+import {readInviteCode, chooseJoinPayload, buildInviteUrl} from './session-utils.js';
 import {renderHype,attachHype} from './hype-features.js';
 const $ = (s, root = document) => root.querySelector(s);
 const page = $('#page');
@@ -48,9 +49,30 @@ let roomState = null, ws = null, currentTab='home', reconnectTimer=null, toastTi
 let calling=false, callPending=false, peerConnection=null, localStream=null, muted=false, callTimer=null;
 let queuedIceCandidates=[];
 let socketConnected=false, nextJoin=null;
-const initialRoom = new URL(location.href).searchParams.get('room');
-if(initialRoom && /^[A-Z2-9]{8}$/i.test(initialRoom)) $('#joinCode').value = initialRoom.toUpperCase();
+let invitedRoom = readInviteCode(location.href);
+const hadInviteParameter = new URL(location.href).searchParams.has('room');
 if(session?.name) $('#setupName').value=session.name;
+function updateInviteScreen(){
+  const active=Boolean(invitedRoom);
+  $('#inviteBanner').classList.toggle('hidden',!active);
+  $('#setupSteps').classList.toggle('hidden',active);
+  $('#createActions').classList.toggle('hidden',active);
+  $('#setupDivider').classList.toggle('hidden',active);
+  $('#joinForm').classList.toggle('hidden',active);
+  if(active){
+    $('#joinCode').value=invitedRoom;
+    $('#inviteCode').textContent=invitedRoom;
+  }
+}
+function dismissInvitation(){
+  invitedRoom=null;
+  const url=new URL(location.href);
+  url.searchParams.delete('room');
+  history.replaceState(null,'',url.pathname+url.search+url.hash);
+  updateInviteScreen();
+}
+updateInviteScreen();
+if(hadInviteParameter && !invitedRoom) $('#inviteError').classList.remove('hidden');
 
 function statusName(id){return roomState?.members?.find(m=>m.id===id)?.name || 'Второй игрок';}
 function self(){return roomState?.members?.find(m=>m.id===selfId);}
@@ -73,16 +95,22 @@ function connect(){
   try{ws=new WebSocket(url);}catch{toast('Не удалось установить соединение');return;}
   ws.addEventListener('open',()=>{
     socketConnected=true;
-    if(nextJoin){send(nextJoin);nextJoin=null;}
-    else if(session?.room)send({type:'join-room',room:session.room,name:session.name,clientId:selfId});
+    const join=chooseJoinPayload({pending:nextJoin,invitation:invitedRoom,session,clientId:selfId});
+    nextJoin=null;
+    if(join)send(join);
   });
   ws.addEventListener('message', async event=>{
     let payload;try{payload=JSON.parse(event.data);}catch{return;}
-    if(payload.type==='error'){toast(payload.message);if(!roomState && session?.room){session=null;localStorage.removeItem(localKey);}return;}
+    if(payload.type==='error'){
+      toast(payload.message);
+      // A full/bad invite must not erase an unrelated saved guest session.
+      if(!roomState && session?.room && !invitedRoom){session=null;localStorage.removeItem(localKey);}
+      return;
+    }
     if(payload.type==='joined'){
       const name=$('#setupName').value.trim() || session?.name || 'Игрок';
       session={room:payload.room,name};localStorage.setItem(localKey,JSON.stringify(session));
-      if(initialRoom)history.replaceState(null,'',location.pathname);
+      if(invitedRoom) dismissInvitation();
       return;
     }
     if(payload.type==='state'){
@@ -124,17 +152,39 @@ function enter(create){
 }
 $('#createRoom').addEventListener('click',()=>enter(true));
 $('#joinForm').addEventListener('submit',e=>{e.preventDefault();enter(false);});
-$('#copyRoom').addEventListener('click',()=>copyInvite());
-$('#leaveRoom').addEventListener('click',()=>{
+$('#inviteJoin').addEventListener('click',()=>enter(false));
+$('#ignoreInvite').addEventListener('click',dismissInvitation);
+$('#copyRoom').addEventListener('click',copyInvite);
+function exitGuestProfile(){
+  // No real accounts yet: this signs out the local guest room, not a remote identity.
   if(calling||callPending)endCall(true);
-  send({type:'leave-room'});session=null;roomState=null;localStorage.removeItem(localKey);showInterface();
-});
-function copyInvite(){
+  if(roomState)send({type:'leave-room'});
+  session=null;roomState=null;nextJoin=null;currentTab='home';
+  localStorage.removeItem(localKey);
+  // Keep the anonymous device ID so this person can rejoin a reserved room by code.
+  $('#setupName').value='';$('#joinCode').value='';
+  dismissInvitation();$('#inviteError').classList.add('hidden');
+  showInterface();toast('Вы вышли. Чтобы вернуться, откройте приглашение или введите код.');
+}
+$('#leaveRoom').addEventListener('click',exitGuestProfile);
+$('#logoutTop').addEventListener('click',exitGuestProfile);
+function getRoomLink(){return buildInviteUrl(location.origin+location.pathname,roomState.room);}
+async function copyInvite(){
   if(!roomState)return;
-  const url=new URL(location.origin+location.pathname);url.searchParams.set('room',roomState.room);
-  if(!navigator.clipboard?.writeText){toast('Код комнаты: '+roomState.room);return;}
-  navigator.clipboard.writeText(url.toString()).then(()=>toast('Ссылка-приглашение скопирована ✓'))
-    .catch(()=>toast('Код комнаты: '+roomState.room));
+  const link=getRoomLink();
+  try{
+    if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(link);toast('Ссылка комнаты скопирована ✓');return;}
+  }catch{}
+  window.prompt('Скопируйте ссылку-приглашение',link);
+}
+async function shareInvite(){
+  if(!roomState)return;
+  const link=getRoomLink();
+  if(navigator.share){
+    try{await navigator.share({title:'PULSE TWO',text:'Присоединяйся к моей комнате — поиграем вдвоём!',url:link});return;}
+    catch(err){if(err?.name==='AbortError')return;}
+  }
+  copyInvite();
 }
 document.querySelectorAll('[data-tab]').forEach(btn=>btn.addEventListener('click',()=>openTab(btn.dataset.tab)));
 function openTab(tab){currentTab=tab;render();window.scrollTo({top:0,behavior:'smooth'});}
@@ -295,7 +345,7 @@ page.addEventListener('click',e=>{
   const button=e.target.closest('button[data-action]');if(!button)return;
   const d=button.dataset;
   if(d.action==='nav'){openTab(d.tab);return;}
-  if(d.action==='invite'){copyInvite();return;}
+  if(d.action==='invite'){shareInvite();return;}
   if(d.action==='pet-care'){send({type:'pet-care',kind:d.kind});return;}
   if(d.action==='mood-set'){
     const note=page.querySelector('input[name="note"]')?.value||'';
