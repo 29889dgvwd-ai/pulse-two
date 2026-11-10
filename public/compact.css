@@ -164,3 +164,11 @@ body{background:radial-gradient(ellipse 540px 350px at 90% -12%,#275c5544,transp
 @media(max-width:880px){.home-bento{grid-template-columns:1fr}.home-primary,.home-signals{min-height:0}.home-primary{min-height:230px}.home-signals{min-height:155px}.home-signals h3{margin:13px 0 7px}.home-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.home-welcome{align-items:flex-start}.home-online{font-size:9px;padding:7px}.home-summaries{grid-template-columns:repeat(2,minmax(0,1fr))}.home-summaries button:last-child{grid-column:1/-1}.home-shortcut{padding:12px 9px;grid-template-columns:30px 1fr 12px;gap:5px}.home-shortcut>span{font-size:23px}.home-shortcut strong{font-size:12px}.home-shortcut small{font-size:9px}.home-welcome h1{font-size:27px}.home-primary{padding:22px}.home-primary h2{font-size:31px}}
 @media(max-width:390px){.home-online{display:none}.home-pulse-actions button{width:49px;height:45px}.topbar-actions{gap:4px}.theme-toggle{width:31px;height:31px;font-size:14px}}
+
+
+.home-hero-buttons{display:flex;flex-wrap:wrap;align-items:center;gap:9px}
+.home-primary .home-hero-buttons>.btn{font-size:12px;min-height:43px;padding:12px 15px}
+.home-primary .home-hero-buttons>.btn.outline{background:#f5fbf3;color:#295b4a;border:1px solid #8abdab}
+.task-section-grid>.card:first-child{max-height:70vh;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#638f7e transparent}
+@media(max-width:800px){.task-section-grid>.card:first-child{max-height:68vh}}
+@media(max-width:400px){.home-primary .home-hero-buttons{width:100%}.home-primary .home-hero-buttons>.btn{flex:1;min-width:0;padding:11px 9px}}
