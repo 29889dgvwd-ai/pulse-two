@@ -8,14 +8,14 @@ export function renderExtraFeatures(state,me,safe,statusName,timeLabel){
   const moments=(state.moments||[]).slice().reverse();
   const timer=state.focus||{endAt:0,duration:0};
   const active=timer.endAt>Date.now();
-  const entries=moments.map(m=>\`<div class="moment-entry">
-    <span class="moment-emoji">\${esc(m.emoji)}</span>
-    <div><small>\${safe(statusName(m.by))} · \${timeLabel(m.at)}</small><strong>\${safe(m.note)}</strong></div>
-    \${m.by===me?\`<button class="moment-delete" data-addon="moment-delete" data-id="\${safe(m.id)}" aria-label="Удалить моё воспоминание">×</button>\`:''}
-  </div>\`).join('')||'<div class="empty-state">Пока пусто. Сохраните первый момент ✦</div>';
+  const entries=moments.map(m=>`<div class="moment-entry">
+    <span class="moment-emoji">${esc(m.emoji)}</span>
+    <div><small>${safe(statusName(m.by))} · ${timeLabel(m.at)}</small><strong>${safe(m.note)}</strong></div>
+    ${m.by===me?`<button class="moment-delete" data-addon="moment-delete" data-id="${safe(m.id)}" aria-label="Удалить моё воспоминание">×</button>`:''}
+  </div>`).join('')||'<div class="empty-state">Пока пусто. Сохраните первый момент ✦</div>';
   const actions=active?'<button class="btn outline" data-addon="focus-stop">Завершить ■</button>':
-    [3,5,10].map(n=>\`<button class="btn \${n===5?'primary':'outline'}" data-addon="focus-start" data-minutes="\${n}">\${n} мин</button>\`).join('');
-  return \`<section class="duo-panel memory-panel">
+    [3,5,10].map(n=>`<button class="btn ${n===5?'primary':'outline'}" data-addon="focus-start" data-minutes="${n}">${n} мин</button>`).join('');
+  return `<section class="duo-panel memory-panel">
     <div class="duo-panel-label">06 / ВАШ АЛЬБОМ</div>
     <h2>Банка моментов <span>🫙</span></h2>
     <p>Сохраняйте короткие воспоминания: смешные фразы, любимые дни, маленькие победы.</p>
@@ -23,17 +23,17 @@ export function renderExtraFeatures(state,me,safe,statusName,timeLabel){
       <select class="text-input" name="emoji" aria-label="Значок"><option>✨</option><option>🎮</option><option>🎬</option><option>🌿</option><option>💜</option></select>
       <input class="text-input" name="note" maxlength="160" required placeholder="Что запомним сегодня?" />
       <button class="btn primary sm">+ Сохранить</button>
-    </form><div class="moment-list">\${entries}</div>
+    </form><div class="moment-list">${entries}</div>
   </section>
   <section class="duo-panel focus-panel">
     <div class="duo-panel-label">07 / ОДИН ТАЙМЕР НА ДВОИХ</div>
     <h2>Время вместе <span>⏳</span></h2>
     <p>Запустите общий таймер для разговора, рисования или игры без отвлечений.</p>
     <div class="focus-clock"><span>ОСТАЛОСЬ</span>
-    <strong id="focusCountdown" data-end="\${Number(timer.endAt)||0}">\${remaining(timer.endAt)}</strong>
-    <small>\${active?\`Запустил(а) \${safe(statusName(timer.by))} · \${timer.duration} мин\`:'Выберите время для старта'}</small>
-    </div><div class="focus-actions">\${actions}</div>
-  </section>\`;
+    <strong id="focusCountdown" data-end="${Number(timer.endAt)||0}">${remaining(timer.endAt)}</strong>
+    <small>${active?`Запустил(а) ${safe(statusName(timer.by))} · ${timer.duration} мин`:'Выберите время для старта'}</small>
+    </div><div class="focus-actions">${actions}</div>
+  </section>`;
 }
 export function attachExtraFeatures(page,send){
   page.addEventListener('click',e=>{
