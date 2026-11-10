@@ -1,0 +1,21 @@
+/* PULSE TWO 2.2 — original memory jar and shared timer */
+.memory-panel{background:linear-gradient(140deg,#3d344a,#292842)}
+.moment-form{display:grid;grid-template-columns:75px minmax(0,1fr);gap:8px;margin:10px 0 20px}
+.moment-form select{min-height:47px;min-width:0;appearance:auto}
+.moment-form input{min-width:0}.moment-form button{grid-column:1/-1;width:100%}
+.moment-list{display:flex;flex-direction:column;gap:10px;max-height:450px;overflow:auto}
+.moment-entry{display:flex;gap:12px;align-items:center;background:#241f34b0;border:1px solid #5b506d;border-radius:15px;padding:12px}
+.moment-emoji{font-size:23px;flex:none}
+.moment-entry>div{min-width:0;display:flex;flex-direction:column;gap:5px;flex:1}
+.moment-entry small{color:#c9b8dc;font-size:10px}
+.moment-entry strong{font-size:12px;overflow-wrap:anywhere}
+.moment-delete{color:#e9c4d3;font-size:20px;border:0;background:none;line-height:1;padding:5px 7px;border-radius:9px}
+.focus-panel{background:linear-gradient(140deg,#314351,#252f42)}
+.focus-clock{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;background:linear-gradient(125deg,#52677b,#424f70);border-radius:19px;border:1px solid #6e7e99;margin:18px 0;padding:24px 12px;min-height:190px}
+.focus-clock>span{font-size:10px;font-weight:900;letter-spacing:.2em;color:#e6dff0}
+.focus-clock strong{font-size:clamp(44px,8vw,64px);letter-spacing:.02em;font-variant-numeric:tabular-nums;color:#f6f3ff}
+.focus-clock small{color:#d5d2e5;font-size:11px;text-align:center}
+.focus-actions{display:flex;gap:9px;justify-content:stretch}
+.focus-actions .btn{flex:1;padding:11px 5px;min-width:0}
+.install-hint{margin-top:14px;background:#302a43;border:1px solid #554a6e;border-radius:12px;padding:11px 13px;color:#d5c9ee;font-size:11px;line-height:1.6}
+@media(max-width:420px){.moment-form{grid-template-columns:65px minmax(0,1fr)}.focus-actions .btn{font-size:11px}}
