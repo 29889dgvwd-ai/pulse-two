@@ -18,3 +18,7 @@ jobs:
       - run: node --check server.js
       - run: node --check public/app.js
       - run: node --check ws-lite.js
+      - run: node --check public/studio.js
+      - run: node --check public/pet.js
+      - run: node --check public/hype-features.js
+      - run: node --check public/extra-features.js

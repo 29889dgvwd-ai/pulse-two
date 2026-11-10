@@ -1,7 +1,7 @@
 /* PULSE TWO / original animated mascot */
 const skins={lavender:['#d6b3ff','#a77de2'],peach:['#ffc7ae','#f19a99'],mint:['#a6eedc','#6dcbbe'],blue:['#b7dafa','#7caff1']};
 const looks={none:'Без аксессуара',bow:'Бант',glasses:'Очки',star:'Звёздочка',crown:'Корона'};
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&gt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 export function mascotArt(pet={},small=false){
  const [base,shade]=skins[pet.skin]||skins.lavender;
  const sleeping=pet.energy<18;

@@ -52,3 +52,14 @@ test('studio lines, stamps, erase, undo redo and pet customization remain synchr
  a.close();b.close();
 });
 test('stop studio test server',async()=>{await new Promise(resolve=>server.close(resolve));await rm(temp,{force:true,recursive:true});});
+
+import {mascotArt,petCard} from '../public/pet.js';
+import {studioPreview} from '../public/studio.js';
+test('mobile studio + pet render original UI and escape user content',()=>{
+ const svg=mascotArt({skin:'mint',accessory:'bow',energy:75});
+ assert.match(svg,/class="mascot-svg/);assert.match(svg,/<svg/);
+ const card=petCard({name:'<script>',xp:7,energy:80,joy:70,skin:'mint',accessory:'bow',room:'garden'},'id',()=>'<name>');
+ assert.doesNotMatch(card,/<script>/);assert.match(card,/&lt;script&gt;/);assert.match(card,/theme-garden/);
+ const preview=studioPreview({duo:{drawings:[{id:'a',kind:'stamp',stamp:'star',x:22,y:12}]}});
+ assert.match(preview,/studio-preview/);assert.match(preview,/⭐/);
+});
