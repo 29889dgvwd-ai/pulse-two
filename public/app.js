@@ -4,6 +4,8 @@ import {readInviteCode, chooseJoinPayload, buildInviteUrl} from './session-utils
 import {studioPreview,installStudio} from './studio.js';
 import {petCard,mascotArt,installPet} from './pet.js';
 import {renderHype,attachHype} from './hype-features.js';
+import {renderMini,attachMini} from './mini-experiences.js';
+import {compactify,installHub,installPalette,selectFeature} from './compact-hub.js';
 const $ = (s, root = document) => root.querySelector(s);
 const page = $('#page');
 const setup = $('#setup');
@@ -48,6 +50,7 @@ localStorage.setItem('pulsetwo.uid', selfId);
 let session = null;
 try {session = JSON.parse(localStorage.getItem(localKey)||'null');}catch{}
 let roomState = null, ws = null, currentTab='home', reconnectTimer=null, toastTimer=null;
+let gameCategory='quick';
 let studioApi=null;
 let calling=false, callPending=false, peerConnection=null, localStream=null, muted=false, callTimer=null;
 let queuedIceCandidates=[];
@@ -201,6 +204,7 @@ function render(){
   document.querySelectorAll('[data-tab]').forEach(el=>el.classList.toggle('active',el.dataset.tab===currentTab));
   $('#pageCrumb').textContent={home:'Главная',games:'Игротека',tasks:'Наши планы',connection:'Связь',together:'Вместе'}[currentTab];
   page.innerHTML={home:renderHome,games:renderGames,tasks:renderTasks,connection:renderConnection,together:renderTogether}[currentTab]();
+  if(currentTab==='together')compactify(page);
   if(editingForm && editingName){
     const fresh=page.querySelector(`form[data-form="${editingForm}"] [name="${editingName}"]`);
     if(fresh){fresh.value=editingValue;fresh.focus({preventScroll:true});}
@@ -276,12 +280,8 @@ function gameView(g){
 }
 function renderTogether(){
  const d=roomState.duo||{},other=partner(),myAnswer=d.answerSet?.[selfId],answerText=d.answers||{};
- const strokes=(d.drawings||[]).map(x=>`<polyline points="${x.points.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${safe(x.color)}" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" />`).join('');
-  const pet=roomState.pet||{energy:72,joy:68,xp:0};
-  const petLevel=1+Math.floor(pet.xp/6);
-  const petEmoji=pet.energy<18?'😴':pet.joy>85?'🦊':'🐾';
   const myMood=roomState.moods?.[selfId];
-  return `${heading('Наше «вместе».','Десять совместных активностей, синхронизированных на двух телефонах.',`<span class="chip pink">NEW · 10 ФИШЕК</span>`)}${inviteCard()}
+  return `${heading('Наше «вместе».','Все ваши фишки — без бесконечной прокрутки.',`<span class="chip pink">PULSE TWO 3.1</span>`)}${inviteCard()}
  <div class="together-stack">
  <section class="duo-panel idea-panel"><div class="duo-panel-label">01 / СПОНТАННЫЙ ПЛАН</div><h2>Колесо моментов <span>🎲</span></h2><p>Не знаете, чем заняться? Пусть приложение придумает небольшой план для вас.</p><div class="idea-reveal">${d.idea?`<span>${safe(d.idea.emoji)}</span><strong>${safe(d.idea.text)}</strong>`:`<span>✨</span><strong>Нажми кнопку и получи идею</strong>`}</div><button data-action="duo-idea" class="btn primary">${d.idea?'Ещё идея ↻':'Удиви нас ↗'}</button></section>
  <section class="duo-panel question-panel"><div class="duo-panel-label">02 / УЗНАЙТЕ ДРУГ ДРУГА</div><h2>Тайный вопрос <span>💌</span></h2><p>Вы оба отвечаете. Чужой ответ останется тайной, пока не ответят двое.</p><div class="question-prompt"><small>ВОПРОС ${1+(d.round||0)}</small><h3>${safe(d.prompt||'Какой самый приятный момент дня?')}</h3></div>
@@ -296,6 +296,7 @@ function renderTogether(){
  </section>
  ${renderExtraFeatures(roomState,selfId,safe,statusName,timeLabel)}
  ${renderHype(roomState,selfId,statusName)}
+ ${renderMini(roomState,selfId,statusName)}
  </div>`;
 }
 function renderTasks(){
@@ -322,6 +323,8 @@ page.addEventListener('click',e=>{
   const button=e.target.closest('button[data-action]');if(!button)return;
   const d=button.dataset;
   if(d.action==='nav'){openTab(d.tab);return;}
+  if(d.action==='go-feature'){if(selectFeature(d.feature))openTab('together');return;}
+  if(d.action==='game-category'){gameCategory=d.category;render();return;}
   if(d.action==='invite'){shareInvite();return;}
   if(d.action==='pet-care'){send({type:'pet-care',kind:d.kind});return;}
   if(d.action==='mood-set'){
@@ -444,6 +447,9 @@ setInterval(()=>{
 if('serviceWorker' in navigator && location.protocol!=='file:')window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 attachExtraFeatures(page,send);
 attachHype(page,send,()=>roomState);
+attachMini(page,send,()=>roomState);
+installHub(page);
+installPalette();
 installPet(page,send);
 studioApi=installStudio(page,send,()=>roomState,toast);
 connect();
