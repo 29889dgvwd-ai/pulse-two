@@ -124,6 +124,57 @@ function ensureHype(room){
   if(!Array.isArray(room.capsules))room.capsules=[];
   return room.hype;
 }
+
+/* PULSE TWO 3.1 — original shared daily rituals, countdowns, dream boards and doodle reactions.
+   These features are generic ideas; no third-party product code or assets are used. */
+const dailyIdeas=[
+  'Какой смешной закон вы бы приняли на своей планете?',
+  'Один подарок за 0 рублей: что можно подарить друг другу?',
+  'Назовите по три необычных занятия на выходные.',
+  'В какой фильм вы бы отправились жить на один день?',
+  'Что вы нарисуете вдвоём за 30 секунд?',
+  'Какая еда точно заслуживает собственного праздника?',
+  'Какой звук мог бы стать вашей фирменной заставкой?',
+  'Придумайте идеальное название для воображаемого кафе.',
+  'За какое маленькое событие сегодня хочется сказать спасибо?',
+  'Какая суперспособность пригодилась бы вашему питомцу?',
+  'Опишите идеальный выходной тремя эмодзи.',
+  'Какая игра из детства заслуживает ремейка?',
+  'Придумайте название следующей мини-экспедиции.',
+  'Если бы у вас был общий робот, что бы он умел?',
+  'Какую песню поставили бы в титры сегодняшнего дня?',
+  'Какая самая смешная выдуманная кличка у кота?',
+  'Если бы у вас был остров, как бы он назывался?',
+  'Какое новое блюдо вы бы придумали вместе?',
+  'Какой необычный музей хотели бы открыть?',
+  'Что вы бы построили из бесконечного запаса LEGO?',
+  'Какой вопрос ещё никто вам не задавал?',
+  'Каким цветом раскрасите сегодняшний день?',
+  'Какая выдуманная олимпиада могла бы стать популярной?',
+  'Придумайте простой ритуал на пять минут.',
+  'Если бы вы снимали комедию, кто был бы главным героем?',
+  'Куда вы бы отправились на телепорте на час?',
+  'Какой добрый поступок можно сделать сегодня?',
+  'Нарисуйте символ следующей недели.',
+  'Что вы хотите попробовать впервые в этом месяце?',
+  'Придумайте короткий девиз для вашей команды.'
+];
+function dayId(){return new Date().toISOString().slice(0,10);}
+function ensureCollections(room){
+  if(!Array.isArray(room.countdowns))room.countdowns=[];
+  if(!Array.isArray(room.bucket))room.bucket=[];
+  if(!room.daily||typeof room.daily!=='object')room.daily={day:dayId(),answers:{}};
+  if(room.daily.day!==dayId())room.daily={day:dayId(),answers:{}};
+  room.daily.answers ||= {};
+  if(!Array.isArray(room.doodleReactions))room.doodleReactions=[];
+}
+function dailyPrompt(room){
+ const key=room.code+dayId();
+ let hash=0;
+ for(const char of key)hash=((hash*31)+char.charCodeAt(0))>>>0;
+ return dailyIdeas[hash%dailyIdeas.length];
+}
+
 const rooms = new Map();
 // Local persistence. Use a persistent disk in production; some free hosting tiers erase files.
 const DATA_DIR = resolve(process.env.PULSE_DATA_DIR || fileURLToPath(new URL('./data/', import.meta.url)));
@@ -136,7 +187,7 @@ function queueSave(){
       await mkdir(DATA_DIR,{recursive:true});
       const rows=Array.from(rooms.values()).map(r=>({
         code:r.code,members:r.members.map(({id,name})=>({id,name})),
-        createdAt:r.createdAt,updatedAt:r.updatedAt,tasks:r.tasks,messages:r.messages,game:r.game,stats:r.stats,lastPulse:r.lastPulse,duo:r.duo,pet:r.pet,moods:r.moods,moments:r.moments,focus:r.focus,hype:r.hype,capsules:r.capsules
+        createdAt:r.createdAt,updatedAt:r.updatedAt,tasks:r.tasks,messages:r.messages,game:r.game,stats:r.stats,lastPulse:r.lastPulse,duo:r.duo,pet:r.pet,moods:r.moods,moments:r.moments,focus:r.focus,hype:r.hype,capsules:r.capsules,countdowns:r.countdowns,bucket:r.bucket,daily:r.daily,doodleReactions:r.doodleReactions
       }));
       const temp=DATA_FILE+'.tmp';await writeFile(temp,JSON.stringify(rows));await rename(temp,DATA_FILE);
     }catch(err){console.error('Save failed:',err.message);}
@@ -148,7 +199,7 @@ try {
   for(const r of rows){
     if(!r?.code || Date.now()-(r.updatedAt||r.createdAt)>30*86400000)continue;
     r.members=(r.members||[]).map(m=>({...m,ws:null}));r.emptyAt=Date.now();
-    r.lastPulse=r.lastPulse||{};ensureDuo(r);ensurePet(r);r.moods ||= {};ensureExperiences(r);ensureHype(r);
+    r.lastPulse=r.lastPulse||{};ensureDuo(r);ensurePet(r);r.moods ||= {};ensureExperiences(r);ensureHype(r);ensureCollections(r);
     rooms.set(r.code,r);
   }
 }catch(err){if(err.code!=='ENOENT')console.error('Restore failed:',err.message);}
@@ -209,7 +260,11 @@ function viewFor(room,id){
   const hypeReveal=room.members.length===2&&room.members.every(m=>Object.hasOwn(hype.votes,m.id));
   const hypeView={round:hype.round,prompt:hypeDeck[hype.round%hypeDeck.length],answerSet:Object.fromEntries(room.members.map(m=>[m.id,Object.hasOwn(hype.votes,m.id)])),reveal:hypeReveal,votes:hypeReveal?hype.votes:{},match:hypeReveal&&room.members.every(m=>hype.votes[m.id]===true),matches:hype.matches};
   const capsulesView=room.capsules.map(c=>({id:c.id,by:c.by,unlockAt:c.unlockAt,at:c.at,opened:Date.now()>=c.unlockAt,...(Date.now()>=c.unlockAt?{note:c.note}:{})}));
-  return {hype:hypeView,capsules:capsulesView,duo:duoView,pet:room.pet,moods:room.moods||{},moments:room.moments||[],focus:room.focus||{endAt:0,duration:0},room:room.code, members:membersView(room), self:id, tasks:room.tasks, messages:room.messages, game, stats:room.stats, createdAt:room.createdAt};
+  ensureCollections(room);
+  const daily=room.daily;
+  const dailyRevealed=room.members.length===2&&room.members.every(m=>Object.hasOwn(daily.answers,m.id));
+  const dailyView={day:daily.day,prompt:dailyPrompt(room),answerSet:Object.fromEntries(room.members.map(m=>[m.id,Object.hasOwn(daily.answers,m.id)])),reveal:dailyRevealed,answers:dailyRevealed?daily.answers:{}};
+  return {daily:dailyView,countdowns:room.countdowns,bucket:room.bucket,doodleReactions:room.doodleReactions,hype:hypeView,capsules:capsulesView,duo:duoView,pet:room.pet,moods:room.moods||{},moments:room.moments||[],focus:room.focus||{endAt:0,duration:0},room:room.code, members:membersView(room), self:id, tasks:room.tasks, messages:room.messages, game, stats:room.stats, createdAt:room.createdAt};
 }
 function broadcast(room){room.updatedAt=Date.now();for(const m of room.members)send(m.ws,{type:'state',data:viewFor(room,m.id)});queueSave();}
 function initiateGame(type, ids){
@@ -374,7 +429,7 @@ function enterRoom(ws, payload, create=false){
   const name=text(payload.name,24)||'Игрок';
   if(!/^[a-zA-Z0-9-]{12,80}$/.test(clientId)){fail(ws,'Неверный идентификатор устройства.');return;}
   if(create){
-    room={code:code(),members:[],createdAt:Date.now(),updatedAt:Date.now(),tasks:structuredClone(defaultTasks),messages:[],game:null,stats:{pulses:0},lastPulse:{},duo:{round:0,answers:{},reveal:false,idea:null,drawings:[]},pet:{energy:72,joy:68,xp:0,lastCare:{},lastAction:null},moods:{},moments:[],focus:{endAt:0,duration:0,by:null},hype:{round:0,votes:{},matches:0},capsules:[],emptyAt:null};
+    room={code:code(),members:[],createdAt:Date.now(),updatedAt:Date.now(),tasks:structuredClone(defaultTasks),messages:[],game:null,stats:{pulses:0},lastPulse:{},duo:{round:0,answers:{},reveal:false,idea:null,drawings:[]},pet:{energy:72,joy:68,xp:0,lastCare:{},lastAction:null},moods:{},moments:[],focus:{endAt:0,duration:0,by:null},hype:{round:0,votes:{},matches:0},capsules:[],countdowns:[],bucket:[],daily:{day:dayId(),answers:{}},doodleReactions:[],emptyAt:null};
     rooms.set(room.code,room);
   } else {
     room=rooms.get(text(payload.room,12).toUpperCase());
@@ -538,6 +593,57 @@ wss.on('connection',ws=>{
       ensureHype(room);
       if(room.capsules.some(c=>c.unlockAt<=Date.now()))broadcast(room);
       return;
+    }
+
+    if(msg.type==='daily-answer'){
+      ensureCollections(room);
+      const answer=text(msg.answer,180).trim();
+      if(!answer||room.members.length!==2||Object.hasOwn(room.daily.answers,id))return;
+      room.daily.answers[id]=answer;
+      broadcast(room);return;
+    }
+    if(msg.type==='countdown-add'){
+      ensureCollections(room);
+      const title=text(msg.title,60).trim(),at=Number(msg.at);
+      if(!title||!Number.isSafeInteger(at)||at<Date.now()+60000||at>Date.now()+2*365*86400000||room.countdowns.length>=8)return;
+      room.countdowns.push({id:randomUUID(),title,at,by:id});
+      room.countdowns.sort((a,b)=>a.at-b.at);
+      broadcast(room);return;
+    }
+    if(msg.type==='countdown-delete'){
+      ensureCollections(room);
+      const target=text(msg.id,90),before=room.countdowns.length;
+      room.countdowns=room.countdowns.filter(x=>x.id!==target||x.by!==id);
+      if(before!==room.countdowns.length)broadcast(room);
+      return;
+    }
+    if(msg.type==='bucket-add'){
+      ensureCollections(room);
+      const title=text(msg.title,100).trim(),category=text(msg.category,16);
+      if(!title||!['travel','food','media','random'].includes(category)||room.bucket.length>=60)return;
+      room.bucket.push({id:randomUUID(),title,category,done:false,by:id,at:Date.now()});
+      broadcast(room);return;
+    }
+    if(msg.type==='bucket-toggle'){
+      ensureCollections(room);
+      const item=room.bucket.find(x=>x.id===text(msg.id,90));
+      if(!item)return;
+      item.done=!item.done;item.changedBy=id;broadcast(room);return;
+    }
+    if(msg.type==='bucket-delete'){
+      ensureCollections(room);
+      const target=text(msg.id,90),before=room.bucket.length;
+      room.bucket=room.bucket.filter(x=>x.id!==target||x.by!==id);
+      if(before!==room.bucket.length)broadcast(room);
+      return;
+    }
+    if(msg.type==='doodle-react'){
+      ensureCollections(room);
+      const emoji=text(msg.emoji,8);
+      if(!['💜','😂','🔥','👏','✨'].includes(emoji))return;
+      room.doodleReactions.push({emoji,by:id,at:Date.now()});
+      room.doodleReactions=room.doodleReactions.slice(-12);
+      broadcast(room);return;
     }
     if(msg.type==='moment-add'){
       ensureExperiences(room);
