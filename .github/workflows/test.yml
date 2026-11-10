@@ -22,3 +22,7 @@ jobs:
       - run: node --check public/pet.js
       - run: node --check public/hype-features.js
       - run: node --check public/extra-features.js
+      - run: node --check public/mini-experiences.js
+      - run: node --check public/compact-hub.js
+      - run: node --check public/compact-home.js
+      - run: node --check public/game-categories.js
