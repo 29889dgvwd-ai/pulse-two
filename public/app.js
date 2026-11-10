@@ -19,6 +19,13 @@ const gameInfo = [
   {id:'story',name:'История на двоих',sub:'Пишите сюжет по очереди',icon:'✎',tag:'ТВОРЧЕСТВО'},
   {id:'cipher',name:'Расшифруй слово',sub:'Из букв соберите правильное слово',icon:'🔐',tag:'ГОНКА'},
 ];
+const moodKinds = [
+  {id:'sunny',emoji:'☀️',label:'Отлично'},
+  {id:'chill',emoji:'🌿',label:'Спокойно'},
+  {id:'sleepy',emoji:'🌙',label:'Устал(а)'},
+  {id:'busy',emoji:'🌧️',label:'Занят(а)'},
+  {id:'spark',emoji:'✨',label:'На драйве'}
+];
 const polls = [
   ['Горы или море?', 'Горы', 'Море'],['Кино дома или прогулка?', 'Кино дома', 'Прогулка'],
   ['Сладкое или солёное?', 'Сладкое', 'Солёное'],['Рассвет или закат?', 'Рассвет', 'Закат'],
@@ -213,7 +220,11 @@ function gameView(g){
 function renderTogether(){
  const d=roomState.duo||{},other=partner(),myAnswer=d.answerSet?.[selfId],answerText=d.answers||{};
  const strokes=(d.drawings||[]).map(x=>`<polyline points="${x.points.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${safe(x.color)}" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" />`).join('');
- return `${heading('Наше «вместе».','Три маленьких сюрприза, которые работают одновременно на двух телефонах.',`<span class="chip pink">NEW · 3 ФИШКИ</span>`)}${inviteCard()}
+  const pet=roomState.pet||{energy:72,joy:68,xp:0};
+  const petLevel=1+Math.floor(pet.xp/6);
+  const petEmoji=pet.energy<18?'😴':pet.joy>85?'🦊':'🐾';
+  const myMood=roomState.moods?.[selfId];
+  return `${heading('Наше «вместе».','Пять игровых фишек, которые работают одновременно на двух телефонах.',`<span class="chip pink">NEW · 5 ФИШЕК</span>`)}${inviteCard()}
  <div class="together-stack">
  <section class="duo-panel idea-panel"><div class="duo-panel-label">01 / СПОНТАННЫЙ ПЛАН</div><h2>Колесо моментов <span>🎲</span></h2><p>Не знаете, чем заняться? Пусть приложение придумает небольшой план для вас.</p><div class="idea-reveal">${d.idea?`<span>${safe(d.idea.emoji)}</span><strong>${safe(d.idea.text)}</strong>`:`<span>✨</span><strong>Нажми кнопку и получи идею</strong>`}</div><button data-action="duo-idea" class="btn primary">${d.idea?'Ещё идея ↻':'Удиви нас ↗'}</button></section>
  <section class="duo-panel question-panel"><div class="duo-panel-label">02 / УЗНАЙТЕ ДРУГ ДРУГА</div><h2>Тайный вопрос <span>💌</span></h2><p>Вы оба отвечаете. Чужой ответ останется тайной, пока не ответят двое.</p><div class="question-prompt"><small>ВОПРОС ${1+(d.round||0)}</small><h3>${safe(d.prompt||'Какой самый приятный момент дня?')}</h3></div>
@@ -222,6 +233,17 @@ function renderTogether(){
  <section class="duo-panel canvas-panel"><div class="duo-panel-label">03 / СОВМЕСТНОЕ ТВОРЧЕСТВО</div><h2>Рисуем вдвоём <span>✏️</span></h2><p>Рисуй пальцем. Линии появятся на экране второго человека.</p><div class="sketch-colors"><button type="button" class="color-dot picked" style="--ink:#C9A7FF" data-action="sketch-color" data-color="#C9A7FF" aria-label="Фиолетовый"></button><button type="button" class="color-dot" style="--ink:#96E9D2" data-action="sketch-color" data-color="#96E9D2" aria-label="Мятный"></button><button type="button" class="color-dot" style="--ink:#FFABBF" data-action="sketch-color" data-color="#FFABBF" aria-label="Розовый"></button><button type="button" class="color-dot" style="--ink:#FDD57D" data-action="sketch-color" data-color="#FDD57D" aria-label="Жёлтый"></button></div>
  <div class="sketch-wrap"><svg id="duoCanvas" aria-label="Общий холст для рисования" role="img" viewBox="0 0 300 180" preserveAspectRatio="none">${strokes}<polyline id="liveStroke" fill="none" stroke="#C9A7FF" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" /></svg></div>
  <div class="sketch-bottom"><span>✦ Линии сохраняются в комнате</span><button type="button" data-action="sketch-undo" class="btn outline sm">Отменить мою линию ↶</button></div>
+ </section>
+ <section class="duo-panel pet-panel"><div class="duo-panel-label">04 / ВАШ МАЛЕНЬКИЙ ДРУГ</div><h2>Питомец Искра <span>🐾</span></h2><p>Новый сосед комнаты: кормите, играйте и отдыхайте вместе. Каждые шесть действий — новый уровень!</p>
+ <div class="pet-stage"><div class="pet-face" role="img" aria-label="Виртуальный питомец">${petEmoji}</div><div class="pet-caption"><small>УРОВЕНЬ ${petLevel}</small><strong>${pet.energy<18?'Пора отдыхать':pet.joy>85?'Искра в восторге!':'Искра ждёт вас двоих'}</strong><span>${pet.xp%6}/6 до следующего уровня</span></div></div>
+ <div class="pet-meter"><span>⚡ Силы</span><div><i style="width:${pet.energy}%"></i></div><b>${pet.energy}%</b></div>
+ <div class="pet-meter"><span>💗 Радость</span><div><i class="joy" style="width:${pet.joy}%"></i></div><b>${pet.joy}%</b></div>
+ <div class="pet-actions"><button data-action="pet-care" data-kind="feed" class="btn soft sm">🍓 Покормить</button><button data-action="pet-care" data-kind="play" class="btn primary sm">🪁 Поиграть</button><button data-action="pet-care" data-kind="rest" class="btn outline sm">💤 Отдых</button></div>
+ <div class="pet-foot">${pet.lastAction?`Последнее действие: ${safe(statusName(pet.lastAction.by))} · ${timeLabel(pet.lastAction.at)}`:'Уход синхронизируется у обоих'}</div></section>
+ <section class="duo-panel mood-panel"><div class="duo-panel-label">05 / НАСТРОЕНИЕ В ПРЯМОМ ЭФИРЕ</div><h2>Как твой день? <span>💭</span></h2><p>Выбери настроение и добавь небольшую подпись. Второй человек сразу увидит обновление.</p>
+ <form data-form="mood-note" class="mood-note-form"><label for="moodNote" class="field-label">Подпись (необязательно)</label><input class="text-input" name="note" id="moodNote" maxlength="80" placeholder="Например, хочу кино и какао" value="${safe(myMood?.note||'')}" /></form>
+ <div class="mood-choices">${moodKinds.map(m=>`<button type="button" data-action="mood-set" data-mood="${m.id}" class="mood-choice ${myMood?.mood===m.id?'chosen':''}" aria-label="${m.label}"><span>${m.emoji}</span><small>${m.label}</small></button>`).join('')}</div>
+ <div class="mood-feed">${roomState.members.map(member=>{const entry=roomState.moods?.[member.id];const opt=moodKinds.find(m=>m.id===entry?.mood);return `<div class="mood-person"><span>${opt?.emoji||'◌'}</span><div><strong>${safe(member.name)}</strong><small>${entry?`${safe(opt?.label||'')} · ${timeLabel(entry.at)}`:'Ещё не выбрал(а)'}</small>${entry?.note?`<em>${safe(entry.note)}</em>`:''}</div></div>`;}).join('')}</div>
  </section></div>`;
 }
 let sketchInk='#C9A7FF',sketchPoints=null,sketchPointer=null;
@@ -269,6 +291,11 @@ page.addEventListener('click',e=>{
   const d=button.dataset;
   if(d.action==='nav'){openTab(d.tab);return;}
   if(d.action==='invite'){copyInvite();return;}
+  if(d.action==='pet-care'){send({type:'pet-care',kind:d.kind});return;}
+  if(d.action==='mood-set'){
+    const note=page.querySelector('input[name="note"]')?.value||'';
+    send({type:'mood-set',mood:d.mood,note});return;
+  }
   if(d.action==='duo-idea'){send({type:'duo-idea'});return;}
   if(d.action==='duo-next'){send({type:'duo-next'});return;}
   if(d.action==='sketch-undo'){send({type:'duo-undo'});return;}

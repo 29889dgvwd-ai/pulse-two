@@ -87,6 +87,13 @@ function ensureDuo(room){
   room.duo.drawings ||= [];
   return room.duo;
 }
+function ensurePet(room){
+  const previous=room.pet&&typeof room.pet==='object'?room.pet:{};
+  const bound=(n,fallback)=>Number.isFinite(n)?Math.max(0,Math.min(100,n)):fallback;
+  room.pet={energy:bound(previous.energy,72),joy:bound(previous.joy,68),xp:Number.isInteger(previous.xp)&&previous.xp>=0?Math.min(100000,previous.xp):0,
+    lastCare:previous.lastCare&&typeof previous.lastCare==='object'?previous.lastCare:{},lastAction:previous.lastAction||null};
+  return room.pet;
+}
 const rooms = new Map();
 // Local persistence. Use a persistent disk in production; some free hosting tiers erase files.
 const DATA_DIR = resolve(process.env.PULSE_DATA_DIR || fileURLToPath(new URL('./data/', import.meta.url)));
@@ -99,7 +106,7 @@ function queueSave(){
       await mkdir(DATA_DIR,{recursive:true});
       const rows=Array.from(rooms.values()).map(r=>({
         code:r.code,members:r.members.map(({id,name})=>({id,name})),
-        createdAt:r.createdAt,updatedAt:r.updatedAt,tasks:r.tasks,messages:r.messages,game:r.game,stats:r.stats,lastPulse:r.lastPulse,duo:r.duo
+        createdAt:r.createdAt,updatedAt:r.updatedAt,tasks:r.tasks,messages:r.messages,game:r.game,stats:r.stats,lastPulse:r.lastPulse,duo:r.duo,pet:r.pet,moods:r.moods
       }));
       const temp=DATA_FILE+'.tmp';await writeFile(temp,JSON.stringify(rows));await rename(temp,DATA_FILE);
     }catch(err){console.error('Save failed:',err.message);}
@@ -111,7 +118,7 @@ try {
   for(const r of rows){
     if(!r?.code || Date.now()-(r.updatedAt||r.createdAt)>30*86400000)continue;
     r.members=(r.members||[]).map(m=>({...m,ws:null}));r.emptyAt=Date.now();
-    r.lastPulse=r.lastPulse||{};ensureDuo(r);
+    r.lastPulse=r.lastPulse||{};ensureDuo(r);ensurePet(r);r.moods ||= {};
     rooms.set(r.code,r);
   }
 }catch(err){if(err.code!=='ENOENT')console.error('Restore failed:',err.message);}
@@ -167,7 +174,7 @@ function viewFor(room,id){
   const duoView={prompt:duoPrompts[duo.round%duoPrompts.length],round:duo.round,
     answerSet,answers:duo.reveal?duo.answers:{},reveal:duo.reveal,
     idea:duo.idea,drawings:duo.drawings};
-  return {duo:duoView,room:room.code, members:membersView(room), self:id, tasks:room.tasks, messages:room.messages, game, stats:room.stats, createdAt:room.createdAt};
+  return {duo:duoView,pet:room.pet,moods:room.moods||{},room:room.code, members:membersView(room), self:id, tasks:room.tasks, messages:room.messages, game, stats:room.stats, createdAt:room.createdAt};
 }
 function broadcast(room){room.updatedAt=Date.now();for(const m of room.members)send(m.ws,{type:'state',data:viewFor(room,m.id)});queueSave();}
 function initiateGame(type, ids){
@@ -332,7 +339,7 @@ function enterRoom(ws, payload, create=false){
   const name=text(payload.name,24)||'Игрок';
   if(!/^[a-zA-Z0-9-]{12,80}$/.test(clientId)){fail(ws,'Неверный идентификатор устройства.');return;}
   if(create){
-    room={code:code(),members:[],createdAt:Date.now(),updatedAt:Date.now(),tasks:structuredClone(defaultTasks),messages:[],game:null,stats:{pulses:0},lastPulse:{},duo:{round:0,answers:{},reveal:false,idea:null,drawings:[]},emptyAt:null};
+    room={code:code(),members:[],createdAt:Date.now(),updatedAt:Date.now(),tasks:structuredClone(defaultTasks),messages:[],game:null,stats:{pulses:0},lastPulse:{},duo:{round:0,answers:{},reveal:false,idea:null,drawings:[]},pet:{energy:72,joy:68,xp:0,lastCare:{},lastAction:null},moods:{},emptyAt:null};
     rooms.set(room.code,room);
   } else {
     room=rooms.get(text(payload.room,12).toUpperCase());
@@ -412,6 +419,25 @@ wss.on('connection',ws=>{
     if(msg.type==='duo-undo'){
       const duo=ensureDuo(room),idx=duo.drawings.findLastIndex(d=>d.id===id);
       if(idx>=0){duo.drawings.splice(idx,1);broadcast(room);}return;
+    }
+    if(msg.type==='pet-care'){
+      const kind=text(msg.kind,10),pet=ensurePet(room),now=Date.now();
+      if(!['feed','play','rest'].includes(kind))return;
+      if(now-(pet.lastCare[id]||0)<5000)return;
+      if(kind==='play'&&pet.energy<12){fail(ws,'Питомцу нужен отдых или еда.');return;}
+      pet.lastCare[id]=now;
+      if(kind==='feed'){pet.energy=Math.min(100,pet.energy+17);pet.joy=Math.min(100,pet.joy+4);}
+      if(kind==='play'){pet.energy=Math.max(0,pet.energy-12);pet.joy=Math.min(100,pet.joy+22);}
+      if(kind==='rest'){pet.energy=Math.min(100,pet.energy+22);pet.joy=Math.min(100,pet.joy+2);}
+      pet.xp=Math.min(100000,pet.xp+1);pet.lastAction={kind,by:id,at:now};
+      broadcast(room);return;
+    }
+    if(msg.type==='mood-set'){
+      const mood=text(msg.mood,16);
+      if(!['sunny','chill','sleepy','busy','spark'].includes(mood))return;
+      room.moods ||= {};
+      room.moods[id]={mood,note:text(msg.note,80),at:Date.now()};
+      broadcast(room);return;
     }
     if(msg.type==='chat'){
       const body=text(msg.text,600);if(!body)return;

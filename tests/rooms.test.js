@@ -93,6 +93,20 @@ test('pairing, tasks, chat, 12 games and privacy',async()=>{
  send(a,{type:'duo-undo'});
  const undone=await received(b,m=>m.type==='state'&&m.data.duo?.drawings?.length===0);
  assert.equal(undone.data.duo.drawings.length,0);
+ // New two-person pet and mood widgets are validated and synchronized.
+ send(a,{type:'pet-care',kind:'feed'});
+ const fed=await received(b,m=>m.type==='state'&&m.data.pet?.xp===1);
+ assert.equal(fed.data.pet.energy,89);
+ send(a,{type:'pet-care',kind:'feed'});
+ send(b,{type:'pet-care',kind:'play'});
+ const played=await received(a,m=>m.type==='state'&&m.data.pet?.xp===2);
+ assert.equal(played.data.pet.energy,77);
+ send(a,{type:'mood-set',mood:'spark',note:'Пойдем на квиз?'});
+ const mood=await received(b,m=>m.type==='state'&&m.data.moods?.[ids[0]]?.mood==='spark');
+ assert.equal(mood.data.moods[ids[0]].note,'Пойдем на квиз?');
+ send(b,{type:'mood-set',mood:'invalid',note:'bad'});
+ await new Promise(r=>setTimeout(r,25));
+ assert.equal(mood.data.moods[ids[1]],undefined);
  for(const type of ['ttt','connect','rps','match','memory','reaction','words','number','emoji','quiz','story','cipher']){
    send(a,{type:'start-game',game:type});
    const current=await received(b,m=>m.type==='state'&&m.data.game?.type===type);
