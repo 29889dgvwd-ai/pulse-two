@@ -6,6 +6,8 @@ import {petCard,mascotArt,installPet} from './pet.js';
 import {renderHype,attachHype} from './hype-features.js';
 import {renderMini,attachMini} from './mini-experiences.js';
 import {compactify,installHub,installPalette,selectFeature} from './compact-hub.js';
+import {compactHome} from './compact-home.js';
+import {compactifyGames,installGameFilter} from './game-categories.js';
 const $ = (s, root = document) => root.querySelector(s);
 const page = $('#page');
 const setup = $('#setup');
@@ -203,8 +205,9 @@ function render(){
   const editingValue=editing?.value;
   document.querySelectorAll('[data-tab]').forEach(el=>el.classList.toggle('active',el.dataset.tab===currentTab));
   $('#pageCrumb').textContent={home:'Главная',games:'Игротека',tasks:'Наши планы',connection:'Связь',together:'Вместе'}[currentTab];
-  page.innerHTML={home:renderHome,games:renderGames,tasks:renderTasks,connection:renderConnection,together:renderTogether}[currentTab]();
+  page.innerHTML={home:()=>compactHome(roomState,{name:self()?.name||'Игрок',online:partnerHere(),invitation:inviteCard()}),games:renderGames,tasks:renderTasks,connection:renderConnection,together:renderTogether}[currentTab]();
   if(currentTab==='together')compactify(page);
+  if(currentTab==='games')compactifyGames(page);
   if(editingForm && editingName){
     const fresh=page.querySelector(`form[data-form="${editingForm}"] [name="${editingName}"]`);
     if(fresh){fresh.value=editingValue;fresh.focus({preventScroll:true});}
@@ -449,6 +452,7 @@ attachExtraFeatures(page,send);
 attachHype(page,send,()=>roomState);
 attachMini(page,send,()=>roomState);
 installHub(page);
+installGameFilter(page);
 installPalette();
 installPet(page,send);
 studioApi=installStudio(page,send,()=>roomState,toast);
