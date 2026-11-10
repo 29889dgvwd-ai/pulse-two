@@ -1,6 +1,8 @@
 /* PULSE TWO — client. Plain JavaScript, no build step. */
 import {renderExtraFeatures,attachExtraFeatures} from './extra-features.js';
 import {readInviteCode, chooseJoinPayload, buildInviteUrl} from './session-utils.js';
+import {studioPreview,installStudio} from './studio.js';
+import {petCard,mascotArt,installPet} from './pet.js';
 import {renderHype,attachHype} from './hype-features.js';
 const $ = (s, root = document) => root.querySelector(s);
 const page = $('#page');
@@ -46,6 +48,7 @@ localStorage.setItem('pulsetwo.uid', selfId);
 let session = null;
 try {session = JSON.parse(localStorage.getItem(localKey)||'null');}catch{}
 let roomState = null, ws = null, currentTab='home', reconnectTimer=null, toastTimer=null;
+let studioApi=null;
 let calling=false, callPending=false, peerConnection=null, localStream=null, muted=false, callTimer=null;
 let queuedIceCandidates=[];
 let socketConnected=false, nextJoin=null;
@@ -113,9 +116,10 @@ function connect(){
       if(invitedRoom) dismissInvitation();
       return;
     }
+    if(payload.type==='duo-live'){studioApi?.onLive(payload);return;}
     if(payload.type==='state'){
       const oldPartner=partner()?.online;
-      roomState=payload.data;showInterface();
+      roomState=payload.data;showInterface();studioApi?.update(roomState);
       if(oldPartner===false && partnerHere())toast('Второй игрок подключился! ✨');
       return;
     }
@@ -222,7 +226,8 @@ function renderHome(){
     <section class="card heart-card"><div class="eyebrow">МИНИ-СИГНАЛЫ</div><h3>Тук-тук.<br>Я здесь! ♡</h3><p>Нажми кнопку — у другого человека появится сигнал. На поддерживаемых телефонах включится вибрация.</p><div class="pulse-row"><button data-action="pulse" data-kind="hello" class="pulse-btn"><b>💜</b> Привет</button><button data-action="pulse" data-kind="highfive" class="pulse-btn"><b>✋</b> Дай пять</button><button data-action="pulse" data-kind="support" class="pulse-btn"><b>✨</b> Поддержка</button></div><div class="stat-line">Отправлено сигналов вместе: ${roomState.stats?.pulses||0}</div></section>
   </div>
   <div class="section-head"><h3>Новые фишки для двоих</h3><button class="mini-link" data-action="nav" data-tab="together">Попробовать все ↗</button></div>
-  <div class="grid duo-home-grid"><button class="duo-preview idea" data-action="nav" data-tab="together"><span>🎲</span><small>КОЛЕСО МОМЕНТОВ</small><b>Что будем делать сегодня?</b><i>Крутить ↗</i></button><button class="duo-preview secret" data-action="nav" data-tab="together"><span>💌</span><small>ТАЙНЫЙ ВОПРОС</small><b>Ответы откроются вместе</b><i>Ответить ↗</i></button><button class="duo-preview sketch" data-action="nav" data-tab="together"><span>✏️</span><small>ЖИВОЙ ХОЛСТ</small><b>Нарисуйте что-то вдвоём</b><i>Рисовать ↗</i></button></div>
+  <div class="grid duo-home-grid"><button class="duo-preview idea" data-action="nav" data-tab="together"><span>🎲</span><small>КОЛЕСО МОМЕНТОВ</small><b>Что будем делать сегодня?</b><i>Крутить ↗</i></button><button class="duo-preview secret" data-action="nav" data-tab="together"><span>💌</span><small>ТАЙНЫЙ ВОПРОС</small><b>Ответы откроются вместе</b><i>Ответить ↗</i></button><button class="duo-preview sketch" data-studio="open"><span>🎨</span><small>НОВАЯ АРТ-СТУДИЯ</small><b>Рисуйте на огромном холсте</b><i>Открыть ↗</i></button></div>
+  <button class="pet-home-teaser" data-action="nav" data-tab="together"><span class="pet-teaser-avatar">${mascotArt(roomState.pet||{},true)}</span><span class="pet-teaser-copy"><small>НАШ ПУШИСТЫЙ МИР · LEVEL ${1+Math.floor((roomState.pet?.xp||0)/6)}</small><strong>${safe(roomState.pet?.name||'Искра')} ждёт вас ✨</strong><em>Новая одежда, три комнаты и совместные игры</em></span><span class="pet-teaser-link">Зайти ↗</span></button>
   <div class="section-head"><h3>Ваши живые виджеты</h3><button class="mini-link" data-action="nav" data-tab="tasks">Все планы ↗</button></div>
   <div class="grid widget-grid"><section class="card soft-lav"><div class="widget-top"><div><div class="eyebrow">НАШИ МАЛЕНЬКИЕ ЦЕЛИ</div><h3>Прогресс на двоих</h3></div><span class="widget-icon">☑</span></div><div class="progress-meta"><b>${p.percent}%</b><small>${p.done} из ${p.total} выполнено вместе</small></div>${progressBars(p.percent)}<div class="task-snippet">${p.tasks.slice(0,4).map(taskMini).join('')||'<span class="muted">Добавьте первый пункт!</span>'}</div></section>
   <section class="card feature-tile"><div><div class="eyebrow">ВАШ СЕГОДНЯШНИЙ НАСТРОЙ</div><div class="big-symbol">${partnerHere()?'✳':'◌'}</div><h3>${partnerHere()?'Вы оба здесь!':'Ждём подключения…'}</h3><p>${partnerHere()?`Сейчас на связи ${safe(people.map(x=>x.name).join(' и '))}. Самое время сыграть.`:'Отправь приглашение — тогда вы сможете играть в реальном времени и общаться голосом.'}</p></div><div class="chips"><span class="chip mint">12 мини-игр</span><span class="chip pink">голосовой чат</span><span class="chip">общие задачи</span></div></section></div>
@@ -282,16 +287,8 @@ function renderTogether(){
  <section class="duo-panel question-panel"><div class="duo-panel-label">02 / УЗНАЙТЕ ДРУГ ДРУГА</div><h2>Тайный вопрос <span>💌</span></h2><p>Вы оба отвечаете. Чужой ответ останется тайной, пока не ответят двое.</p><div class="question-prompt"><small>ВОПРОС ${1+(d.round||0)}</small><h3>${safe(d.prompt||'Какой самый приятный момент дня?')}</h3></div>
  ${d.reveal?`<div class="duo-answers">${roomState.members.map(m=>`<div><small>${safe(m.name)}</small><strong>${safe(answerText[m.id]||'—')}</strong></div>`).join('')}</div><button data-action="duo-next" class="btn primary">Следующий вопрос →</button>`:myAnswer?`<div class="duo-wait">✓ Твой ответ сохранён. ${other?.id&&d.answerSet?.[other.id]?'Ответы готовы…':'Ждём второго человека.'}</div>`:`<form data-form="duo-answer" class="duo-answer-form"><textarea name="answer" maxlength="180" rows="2" required class="text-input" placeholder="Твой ответ (до 180 символов)…"></textarea><button class="btn primary">Запечатать ответ ↗</button></form>`}
  </section>
- <section class="duo-panel canvas-panel"><div class="duo-panel-label">03 / СОВМЕСТНОЕ ТВОРЧЕСТВО</div><h2>Рисуем вдвоём <span>✏️</span></h2><p>Рисуй пальцем. Линии появятся на экране второго человека.</p><div class="sketch-colors"><button type="button" class="color-dot picked" style="--ink:#C9A7FF" data-action="sketch-color" data-color="#C9A7FF" aria-label="Фиолетовый"></button><button type="button" class="color-dot" style="--ink:#96E9D2" data-action="sketch-color" data-color="#96E9D2" aria-label="Мятный"></button><button type="button" class="color-dot" style="--ink:#FFABBF" data-action="sketch-color" data-color="#FFABBF" aria-label="Розовый"></button><button type="button" class="color-dot" style="--ink:#FDD57D" data-action="sketch-color" data-color="#FDD57D" aria-label="Жёлтый"></button></div>
- <div class="sketch-wrap"><svg id="duoCanvas" aria-label="Общий холст для рисования" role="img" viewBox="0 0 300 180" preserveAspectRatio="none">${strokes}<polyline id="liveStroke" fill="none" stroke="#C9A7FF" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" /></svg></div>
- <div class="sketch-bottom"><span>✦ Линии сохраняются в комнате</span><button type="button" data-action="sketch-undo" class="btn outline sm">Отменить мою линию ↶</button></div>
- </section>
- <section class="duo-panel pet-panel"><div class="duo-panel-label">04 / ВАШ МАЛЕНЬКИЙ ДРУГ</div><h2>Питомец Искра <span>🐾</span></h2><p>Новый сосед комнаты: кормите, играйте и отдыхайте вместе. Каждые шесть действий — новый уровень!</p>
- <div class="pet-stage"><div class="pet-face" role="img" aria-label="Виртуальный питомец">${petEmoji}</div><div class="pet-caption"><small>УРОВЕНЬ ${petLevel}</small><strong>${pet.energy<18?'Пора отдыхать':pet.joy>85?'Искра в восторге!':'Искра ждёт вас двоих'}</strong><span>${pet.xp%6}/6 до следующего уровня</span></div></div>
- <div class="pet-meter"><span>⚡ Силы</span><div><i style="width:${pet.energy}%"></i></div><b>${pet.energy}%</b></div>
- <div class="pet-meter"><span>💗 Радость</span><div><i class="joy" style="width:${pet.joy}%"></i></div><b>${pet.joy}%</b></div>
- <div class="pet-actions"><button data-action="pet-care" data-kind="feed" class="btn soft sm">🍓 Покормить</button><button data-action="pet-care" data-kind="play" class="btn primary sm">🪁 Поиграть</button><button data-action="pet-care" data-kind="rest" class="btn outline sm">💤 Отдых</button></div>
- <div class="pet-foot">${pet.lastAction?`Последнее действие: ${safe(statusName(pet.lastAction.by))} · ${timeLabel(pet.lastAction.at)}`:'Уход синхронизируется у обоих'}</div></section>
+ ${studioPreview(roomState)}
+ ${petCard(roomState.pet||{},selfId,statusName)}
  <section class="duo-panel mood-panel"><div class="duo-panel-label">05 / НАСТРОЕНИЕ В ПРЯМОМ ЭФИРЕ</div><h2>Как твой день? <span>💭</span></h2><p>Выбери настроение и добавь небольшую подпись. Второй человек сразу увидит обновление.</p>
  <form data-form="mood-note" class="mood-note-form"><label for="moodNote" class="field-label">Подпись (необязательно)</label><input class="text-input" name="note" id="moodNote" maxlength="80" placeholder="Например, хочу кино и какао" value="${safe(myMood?.note||'')}" /></form>
  <div class="mood-choices">${moodKinds.map(m=>`<button type="button" data-action="mood-set" data-mood="${m.id}" class="mood-choice ${myMood?.mood===m.id?'chosen':''}" aria-label="${m.label}"><span>${m.emoji}</span><small>${m.label}</small></button>`).join('')}</div>
@@ -301,26 +298,6 @@ function renderTogether(){
  ${renderHype(roomState,selfId,statusName)}
  </div>`;
 }
-let sketchInk='#C9A7FF',sketchPoints=null,sketchPointer=null;
-function sketchPoint(e, svg){
- const rect=svg.getBoundingClientRect();return [Math.min(300,Math.max(0,Math.round((e.clientX-rect.left)/rect.width*300*10)/10)),Math.min(180,Math.max(0,Math.round((e.clientY-rect.top)/rect.height*180*10)/10))];
-}
-page.addEventListener('pointerdown',e=>{
- const svg=e.target.closest?.('#duoCanvas');if(!svg||!e.isPrimary)return;
- e.preventDefault();sketchPoints=[sketchPoint(e,svg)];sketchPointer=e.pointerId;svg.setPointerCapture(e.pointerId);
-});
-page.addEventListener('pointermove',e=>{
- const svg=e.target.closest?.('#duoCanvas');if(!svg||sketchPoints===null||e.pointerId!==sketchPointer)return;
- e.preventDefault();if(sketchPoints.length<105){sketchPoints.push(sketchPoint(e,svg));$('#liveStroke',svg).setAttribute('points',sketchPoints.map(p=>p.join(',')).join(' '));$('#liveStroke',svg).setAttribute('stroke',sketchInk);}
-});
-function finishSketch(e){
- if(sketchPoints===null||e.pointerId!==sketchPointer)return;
- const points=sketchPoints;sketchPoints=null;sketchPointer=null;
- if(points.length===1)points.push([Math.min(300,points[0][0]+.1),points[0][1]]);
- send({type:'duo-sketch',points,color:sketchInk});
-}
-page.addEventListener('pointerup',finishSketch);page.addEventListener('pointercancel',finishSketch);
-
 function renderTasks(){
   const p=widgetProgress(),both=roomState.members.length===2;
   return `${heading('Наши планы.','Вы оба можете добавлять задачи и отмечать свою часть.')}${inviteCard()}<div class="grid task-section-grid"><section class="card"><div class="eyebrow">ОБЩИЙ ЧЕК-ЛИСТ</div><h3 style="margin:9px 0 10px">Наш маленький маршрут</h3><p class="muted">Пункт становится полностью выполненным, когда галочку поставили оба.</p>
@@ -353,11 +330,6 @@ page.addEventListener('click',e=>{
   }
   if(d.action==='duo-idea'){send({type:'duo-idea'});return;}
   if(d.action==='duo-next'){send({type:'duo-next'});return;}
-  if(d.action==='sketch-undo'){send({type:'duo-undo'});return;}
-  if(d.action==='sketch-color'){
-    sketchInk=d.color;
-    page.querySelectorAll('.color-dot').forEach(dot=>dot.classList.toggle('picked',dot.dataset.color===sketchInk));return;
-  }
   if(d.action==='toggle-task'){send({type:'toggle-task',id:d.id});return;}
   if(d.action==='remove-task'){send({type:'remove-task',id:d.id});return;}
   if(d.action==='pulse'){
@@ -472,4 +444,6 @@ setInterval(()=>{
 if('serviceWorker' in navigator && location.protocol!=='file:')window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 attachExtraFeatures(page,send);
 attachHype(page,send,()=>roomState);
+installPet(page,send);
+studioApi=installStudio(page,send,()=>roomState,toast);
 connect();

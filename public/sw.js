@@ -1,5 +1,5 @@
-const CACHE='pulse-two-v6';
-const FILES=['/','/index.html','/styles.css','/extra-features.css','/hype-features.css','/app.js','/extra-features.js','/hype-features.js','/session-utils.js','/manifest.json','/icon.svg'];
+const CACHE='pulse-two-v7';
+const FILES=['/','/index.html','/styles.css','/extra-features.css','/hype-features.css','/app.js','/extra-features.js','/hype-features.js','/session-utils.js','/pet.js','/studio.js','/pet.css','/studio.css','/refresh.css','/manifest.json','/icon.svg'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(FILES))));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))));
 self.addEventListener('fetch',event=>{
