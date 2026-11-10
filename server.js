@@ -94,6 +94,10 @@ function ensurePet(room){
     lastCare:previous.lastCare&&typeof previous.lastCare==='object'?previous.lastCare:{},lastAction:previous.lastAction||null};
   return room.pet;
 }
+function ensureExperiences(room){
+  if(!Array.isArray(room.moments))room.moments=[];
+  if(!room.focus || typeof room.focus!=='object')room.focus={endAt:0,duration:0,by:null};
+}
 const rooms = new Map();
 // Local persistence. Use a persistent disk in production; some free hosting tiers erase files.
 const DATA_DIR = resolve(process.env.PULSE_DATA_DIR || fileURLToPath(new URL('./data/', import.meta.url)));
@@ -106,7 +110,7 @@ function queueSave(){
       await mkdir(DATA_DIR,{recursive:true});
       const rows=Array.from(rooms.values()).map(r=>({
         code:r.code,members:r.members.map(({id,name})=>({id,name})),
-        createdAt:r.createdAt,updatedAt:r.updatedAt,tasks:r.tasks,messages:r.messages,game:r.game,stats:r.stats,lastPulse:r.lastPulse,duo:r.duo,pet:r.pet,moods:r.moods
+        createdAt:r.createdAt,updatedAt:r.updatedAt,tasks:r.tasks,messages:r.messages,game:r.game,stats:r.stats,lastPulse:r.lastPulse,duo:r.duo,pet:r.pet,moods:r.moods,moments:r.moments,focus:r.focus
       }));
       const temp=DATA_FILE+'.tmp';await writeFile(temp,JSON.stringify(rows));await rename(temp,DATA_FILE);
     }catch(err){console.error('Save failed:',err.message);}
@@ -118,7 +122,7 @@ try {
   for(const r of rows){
     if(!r?.code || Date.now()-(r.updatedAt||r.createdAt)>30*86400000)continue;
     r.members=(r.members||[]).map(m=>({...m,ws:null}));r.emptyAt=Date.now();
-    r.lastPulse=r.lastPulse||{};ensureDuo(r);ensurePet(r);r.moods ||= {};
+    r.lastPulse=r.lastPulse||{};ensureDuo(r);ensurePet(r);r.moods ||= {};ensureExperiences(r);
     rooms.set(r.code,r);
   }
 }catch(err){if(err.code!=='ENOENT')console.error('Restore failed:',err.message);}
@@ -174,7 +178,7 @@ function viewFor(room,id){
   const duoView={prompt:duoPrompts[duo.round%duoPrompts.length],round:duo.round,
     answerSet,answers:duo.reveal?duo.answers:{},reveal:duo.reveal,
     idea:duo.idea,drawings:duo.drawings};
-  return {duo:duoView,pet:room.pet,moods:room.moods||{},room:room.code, members:membersView(room), self:id, tasks:room.tasks, messages:room.messages, game, stats:room.stats, createdAt:room.createdAt};
+  return {duo:duoView,pet:room.pet,moods:room.moods||{},moments:room.moments||[],focus:room.focus||{endAt:0,duration:0},room:room.code, members:membersView(room), self:id, tasks:room.tasks, messages:room.messages, game, stats:room.stats, createdAt:room.createdAt};
 }
 function broadcast(room){room.updatedAt=Date.now();for(const m of room.members)send(m.ws,{type:'state',data:viewFor(room,m.id)});queueSave();}
 function initiateGame(type, ids){
@@ -339,7 +343,7 @@ function enterRoom(ws, payload, create=false){
   const name=text(payload.name,24)||'Игрок';
   if(!/^[a-zA-Z0-9-]{12,80}$/.test(clientId)){fail(ws,'Неверный идентификатор устройства.');return;}
   if(create){
-    room={code:code(),members:[],createdAt:Date.now(),updatedAt:Date.now(),tasks:structuredClone(defaultTasks),messages:[],game:null,stats:{pulses:0},lastPulse:{},duo:{round:0,answers:{},reveal:false,idea:null,drawings:[]},pet:{energy:72,joy:68,xp:0,lastCare:{},lastAction:null},moods:{},emptyAt:null};
+    room={code:code(),members:[],createdAt:Date.now(),updatedAt:Date.now(),tasks:structuredClone(defaultTasks),messages:[],game:null,stats:{pulses:0},lastPulse:{},duo:{round:0,answers:{},reveal:false,idea:null,drawings:[]},pet:{energy:72,joy:68,xp:0,lastCare:{},lastAction:null},moods:{},moments:[],focus:{endAt:0,duration:0,by:null},emptyAt:null};
     rooms.set(room.code,room);
   } else {
     room=rooms.get(text(payload.room,12).toUpperCase());
@@ -419,6 +423,35 @@ wss.on('connection',ws=>{
     if(msg.type==='duo-undo'){
       const duo=ensureDuo(room),idx=duo.drawings.findLastIndex(d=>d.id===id);
       if(idx>=0){duo.drawings.splice(idx,1);broadcast(room);}return;
+    }
+    if(msg.type==='moment-add'){
+      ensureExperiences(room);
+      const note=text(msg.note,160), emoji=text(msg.emoji,8);
+      if(!note || !['✨','🎮','🎬','🌿','💜'].includes(emoji))return;
+      room.moments.push({id:randomUUID(),by:id,note,emoji,at:Date.now()});
+      room.moments=room.moments.slice(-30);
+      broadcast(room);return;
+    }
+    if(msg.type==='moment-delete'){
+      ensureExperiences(room);
+      const target=text(msg.id,80),count=room.moments.length;
+      room.moments=room.moments.filter(item=>!(item.id===target&&item.by===id));
+      if(room.moments.length!==count)broadcast(room);
+      return;
+    }
+    if(msg.type==='focus-start'){
+      ensureExperiences(room);
+      const minutes=Number(msg.minutes),now=Date.now();
+      if(![3,5,10].includes(minutes) || room.focus.endAt>now)return;
+      room.focus={endAt:now+minutes*60000,duration:minutes,by:id};
+      broadcast(room);return;
+    }
+    if(msg.type==='focus-stop'){
+      ensureExperiences(room);
+      if(room.focus.endAt>Date.now()){
+        room.focus={endAt:0,duration:0,by:id};broadcast(room);
+      }
+      return;
     }
     if(msg.type==='pet-care'){
       const kind=text(msg.kind,10),pet=ensurePet(room),now=Date.now();
