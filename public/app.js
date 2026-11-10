@@ -1,5 +1,6 @@
 /* PULSE TWO — client. Plain JavaScript, no build step. */
 import {renderExtraFeatures,attachExtraFeatures} from './extra-features.js';
+import {renderHype,attachHype} from './hype-features.js';
 const $ = (s, root = document) => root.querySelector(s);
 const page = $('#page');
 const setup = $('#setup');
@@ -225,7 +226,7 @@ function renderTogether(){
   const petLevel=1+Math.floor(pet.xp/6);
   const petEmoji=pet.energy<18?'😴':pet.joy>85?'🦊':'🐾';
   const myMood=roomState.moods?.[selfId];
-  return `${heading('Наше «вместе».','Семь игровых фишек, которые работают одновременно на двух телефонах.',`<span class="chip pink">NEW · 7 ФИШЕК</span>`)}${inviteCard()}
+  return `${heading('Наше «вместе».','Десять совместных активностей, синхронизированных на двух телефонах.',`<span class="chip pink">NEW · 10 ФИШЕК</span>`)}${inviteCard()}
  <div class="together-stack">
  <section class="duo-panel idea-panel"><div class="duo-panel-label">01 / СПОНТАННЫЙ ПЛАН</div><h2>Колесо моментов <span>🎲</span></h2><p>Не знаете, чем заняться? Пусть приложение придумает небольшой план для вас.</p><div class="idea-reveal">${d.idea?`<span>${safe(d.idea.emoji)}</span><strong>${safe(d.idea.text)}</strong>`:`<span>✨</span><strong>Нажми кнопку и получи идею</strong>`}</div><button data-action="duo-idea" class="btn primary">${d.idea?'Ещё идея ↻':'Удиви нас ↗'}</button></section>
  <section class="duo-panel question-panel"><div class="duo-panel-label">02 / УЗНАЙТЕ ДРУГ ДРУГА</div><h2>Тайный вопрос <span>💌</span></h2><p>Вы оба отвечаете. Чужой ответ останется тайной, пока не ответят двое.</p><div class="question-prompt"><small>ВОПРОС ${1+(d.round||0)}</small><h3>${safe(d.prompt||'Какой самый приятный момент дня?')}</h3></div>
@@ -247,6 +248,7 @@ function renderTogether(){
  <div class="mood-feed">${roomState.members.map(member=>{const entry=roomState.moods?.[member.id];const opt=moodKinds.find(m=>m.id===entry?.mood);return `<div class="mood-person"><span>${opt?.emoji||'◌'}</span><div><strong>${safe(member.name)}</strong><small>${entry?`${safe(opt?.label||'')} · ${timeLabel(entry.at)}`:'Ещё не выбрал(а)'}</small>${entry?.note?`<em>${safe(entry.note)}</em>`:''}</div></div>`;}).join('')}</div>
  </section>
  ${renderExtraFeatures(roomState,selfId,safe,statusName,timeLabel)}
+ ${renderHype(roomState,selfId,statusName)}
  </div>`;
 }
 let sketchInk='#C9A7FF',sketchPoints=null,sketchPointer=null;
@@ -419,4 +421,5 @@ setInterval(()=>{
 },200);
 if('serviceWorker' in navigator && location.protocol!=='file:')window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 attachExtraFeatures(page,send);
+attachHype(page,send,()=>roomState);
 connect();

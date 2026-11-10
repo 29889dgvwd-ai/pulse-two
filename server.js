@@ -98,6 +98,22 @@ function ensureExperiences(room){
   if(!Array.isArray(room.moments))room.moments=[];
   if(!room.focus || typeof room.focus!=='object')room.focus={endAt:0,duration:0,by:null};
 }
+const hypeDeck=[
+  '🎬 Киновечер с неожиданным фильмом?','🌆 Вечерняя прогулка по красивым улицам?',
+  '🍕 Приготовить необычную пиццу вместе?','🎮 Устроить турнир из трёх игр?',
+  '📸 Сделать по 5 смешных фото?','🎧 Собрать общий плейлист?',
+  '🎨 Нарисовать друг друга за 2 минуты?','🌿 Выбрать маршрут через парк?',
+  '🍪 Придумать собственный десерт?','🧩 Разгадать головоломку вдвоём?',
+  '🌅 Посмотреть на закат вместе?','🎲 Доверить вечер случайной идее?'
+];
+function ensureHype(room){
+  if(!room.hype || typeof room.hype!=='object')room.hype={round:0,votes:{},matches:0};
+  room.hype.round=Number.isInteger(room.hype.round)&&room.hype.round>=0?room.hype.round:0;
+  room.hype.votes ||= {};
+  room.hype.matches=Number.isInteger(room.hype.matches)?Math.min(Math.max(0,room.hype.matches),100000):0;
+  if(!Array.isArray(room.capsules))room.capsules=[];
+  return room.hype;
+}
 const rooms = new Map();
 // Local persistence. Use a persistent disk in production; some free hosting tiers erase files.
 const DATA_DIR = resolve(process.env.PULSE_DATA_DIR || fileURLToPath(new URL('./data/', import.meta.url)));
@@ -110,7 +126,7 @@ function queueSave(){
       await mkdir(DATA_DIR,{recursive:true});
       const rows=Array.from(rooms.values()).map(r=>({
         code:r.code,members:r.members.map(({id,name})=>({id,name})),
-        createdAt:r.createdAt,updatedAt:r.updatedAt,tasks:r.tasks,messages:r.messages,game:r.game,stats:r.stats,lastPulse:r.lastPulse,duo:r.duo,pet:r.pet,moods:r.moods,moments:r.moments,focus:r.focus
+        createdAt:r.createdAt,updatedAt:r.updatedAt,tasks:r.tasks,messages:r.messages,game:r.game,stats:r.stats,lastPulse:r.lastPulse,duo:r.duo,pet:r.pet,moods:r.moods,moments:r.moments,focus:r.focus,hype:r.hype,capsules:r.capsules
       }));
       const temp=DATA_FILE+'.tmp';await writeFile(temp,JSON.stringify(rows));await rename(temp,DATA_FILE);
     }catch(err){console.error('Save failed:',err.message);}
@@ -122,7 +138,7 @@ try {
   for(const r of rows){
     if(!r?.code || Date.now()-(r.updatedAt||r.createdAt)>30*86400000)continue;
     r.members=(r.members||[]).map(m=>({...m,ws:null}));r.emptyAt=Date.now();
-    r.lastPulse=r.lastPulse||{};ensureDuo(r);ensurePet(r);r.moods ||= {};ensureExperiences(r);
+    r.lastPulse=r.lastPulse||{};ensureDuo(r);ensurePet(r);r.moods ||= {};ensureExperiences(r);ensureHype(r);
     rooms.set(r.code,r);
   }
 }catch(err){if(err.code!=='ENOENT')console.error('Restore failed:',err.message);}
@@ -178,7 +194,11 @@ function viewFor(room,id){
   const duoView={prompt:duoPrompts[duo.round%duoPrompts.length],round:duo.round,
     answerSet,answers:duo.reveal?duo.answers:{},reveal:duo.reveal,
     idea:duo.idea,drawings:duo.drawings};
-  return {duo:duoView,pet:room.pet,moods:room.moods||{},moments:room.moments||[],focus:room.focus||{endAt:0,duration:0},room:room.code, members:membersView(room), self:id, tasks:room.tasks, messages:room.messages, game, stats:room.stats, createdAt:room.createdAt};
+  const hype=ensureHype(room);
+  const hypeReveal=room.members.length===2&&room.members.every(m=>Object.hasOwn(hype.votes,m.id));
+  const hypeView={round:hype.round,prompt:hypeDeck[hype.round%hypeDeck.length],answerSet:Object.fromEntries(room.members.map(m=>[m.id,Object.hasOwn(hype.votes,m.id)])),reveal:hypeReveal,votes:hypeReveal?hype.votes:{},match:hypeReveal&&room.members.every(m=>hype.votes[m.id]===true),matches:hype.matches};
+  const capsulesView=room.capsules.map(c=>({id:c.id,by:c.by,unlockAt:c.unlockAt,at:c.at,opened:Date.now()>=c.unlockAt,...(Date.now()>=c.unlockAt?{note:c.note}:{})}));
+  return {hype:hypeView,capsules:capsulesView,duo:duoView,pet:room.pet,moods:room.moods||{},moments:room.moments||[],focus:room.focus||{endAt:0,duration:0},room:room.code, members:membersView(room), self:id, tasks:room.tasks, messages:room.messages, game, stats:room.stats, createdAt:room.createdAt};
 }
 function broadcast(room){room.updatedAt=Date.now();for(const m of room.members)send(m.ws,{type:'state',data:viewFor(room,m.id)});queueSave();}
 function initiateGame(type, ids){
@@ -343,7 +363,7 @@ function enterRoom(ws, payload, create=false){
   const name=text(payload.name,24)||'Игрок';
   if(!/^[a-zA-Z0-9-]{12,80}$/.test(clientId)){fail(ws,'Неверный идентификатор устройства.');return;}
   if(create){
-    room={code:code(),members:[],createdAt:Date.now(),updatedAt:Date.now(),tasks:structuredClone(defaultTasks),messages:[],game:null,stats:{pulses:0},lastPulse:{},duo:{round:0,answers:{},reveal:false,idea:null,drawings:[]},pet:{energy:72,joy:68,xp:0,lastCare:{},lastAction:null},moods:{},moments:[],focus:{endAt:0,duration:0,by:null},emptyAt:null};
+    room={code:code(),members:[],createdAt:Date.now(),updatedAt:Date.now(),tasks:structuredClone(defaultTasks),messages:[],game:null,stats:{pulses:0},lastPulse:{},duo:{round:0,answers:{},reveal:false,idea:null,drawings:[]},pet:{energy:72,joy:68,xp:0,lastCare:{},lastAction:null},moods:{},moments:[],focus:{endAt:0,duration:0,by:null},hype:{round:0,votes:{},matches:0},capsules:[],emptyAt:null};
     rooms.set(room.code,room);
   } else {
     room=rooms.get(text(payload.room,12).toUpperCase());
@@ -423,6 +443,37 @@ wss.on('connection',ws=>{
     if(msg.type==='duo-undo'){
       const duo=ensureDuo(room),idx=duo.drawings.findLastIndex(d=>d.id===id);
       if(idx>=0){duo.drawings.splice(idx,1);broadcast(room);}return;
+    }
+    if(msg.type==='hype-vote'){
+      const hype=ensureHype(room);
+      if(room.members.length!==2 || typeof msg.answer!=='boolean' || Object.hasOwn(hype.votes,id))return;
+      hype.votes[id]=msg.answer;
+      if(room.members.every(m=>Object.hasOwn(hype.votes,m.id)) && room.members.every(m=>hype.votes[m.id]===true))hype.matches++;
+      broadcast(room);return;
+    }
+    if(msg.type==='hype-next'){
+      const hype=ensureHype(room);
+      if(room.members.length!==2 || !room.members.every(m=>Object.hasOwn(hype.votes,m.id)))return;
+      hype.round++;hype.votes={};broadcast(room);return;
+    }
+    if(msg.type==='capsule-add'){
+      ensureHype(room);
+      const note=text(msg.note,180),minutes=Number(msg.minutes);
+      if(!note||![10,1440,10080].includes(minutes)||room.capsules.length>=20)return;
+      room.capsules.push({id:randomUUID(),by:id,note,at:Date.now(),unlockAt:Date.now()+minutes*60000});
+      broadcast(room);return;
+    }
+    if(msg.type==='capsule-delete'){
+      ensureHype(room);
+      const capId=text(msg.id,90),size=room.capsules.length;
+      room.capsules=room.capsules.filter(c=>!(c.id===capId && c.by===id));
+      if(room.capsules.length!==size)broadcast(room);
+      return;
+    }
+    if(msg.type==='capsule-refresh'){
+      ensureHype(room);
+      if(room.capsules.some(c=>c.unlockAt<=Date.now()))broadcast(room);
+      return;
     }
     if(msg.type==='moment-add'){
       ensureExperiences(room);

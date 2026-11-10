@@ -123,6 +123,27 @@ test('pairing, tasks, chat, 12 games and privacy',async()=>{
  await received(a,m=>m.type==='state'&&m.data.focus?.endAt===0);
  send(a,{type:'moment-delete',id:momentId});
  await received(b,m=>m.type==='state'&&m.data.moments?.length===0);
+ // Hype features: private votes, automatic matching, server-locked time capsules and ownership.
+ send(a,{type:'hype-vote',answer:true});
+ const h1=await received(b,m=>m.type==='state'&&m.data.hype?.answerSet?.[ids[0]]);
+ assert.deepEqual(h1.data.hype.votes,{},'first choice must be sealed until both vote');
+ send(a,{type:'hype-vote',answer:false});
+ send(b,{type:'hype-vote',answer:true});
+ const h2=await received(a,m=>m.type==='state'&&m.data.hype?.reveal===true);
+ assert.equal(h2.data.hype.match,true);
+ assert.equal(h2.data.hype.matches,1);
+ send(a,{type:'hype-next'});
+ await received(b,m=>m.type==='state'&&m.data.hype?.round===1);
+ send(a,{type:'capsule-add',note:'Встретимся в парке',minutes:10});
+ const capState=await received(b,m=>m.type==='state'&&m.data.capsules?.length===1);
+ assert.equal(capState.data.capsules[0].note,undefined,'sealed text must never be sent before unlock');
+ const capId=capState.data.capsules[0].id;
+ send(b,{type:'capsule-delete',id:capId});
+ send(a,{type:'add-task',text:'Тестовый пункт после капсулы'});
+ const preserved=await received(a,m=>m.type==='state'&&m.data.tasks.length===6);
+ assert.equal(preserved.data.capsules.length,1,'partner cannot delete another author capsule');
+ send(a,{type:'capsule-delete',id:capId});
+ await received(b,m=>m.type==='state'&&m.data.capsules?.length===0);
  for(const type of ['ttt','connect','rps','match','memory','reaction','words','number','emoji','quiz','story','cipher']){
    send(a,{type:'start-game',game:type});
    const current=await received(b,m=>m.type==='state'&&m.data.game?.type===type);
